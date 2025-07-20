@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   AlertCircle, 
   X, 
@@ -14,7 +14,8 @@ function ErrorAlert({
   onClose = null,
   className = '',
   showIcon = true,
-  title = null
+  title = null,
+  compact = false
 }) {
   const alertConfig = {
     error: {
@@ -44,26 +45,26 @@ function ErrorAlert({
   const displayTitle = title || config.defaultTitle;
 
   return (
-    <div className={`alert ${config.className} ${className}`}>
+    <div className={`alert ${config.className} ${compact ? 'py-3' : ''} ${className}`}>
       <div className="flex items-start gap-3">
         {/* Icon */}
         {showIcon && (
           <div className="flex-shrink-0 pt-0.5">
-            <Icon size={20} />
+            <Icon size={compact ? 16 : 20} />
           </div>
         )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Title */}
-          {displayTitle && (
+          {displayTitle && !compact && (
             <h4 className="font-medium mb-1">
               {displayTitle}
             </h4>
           )}
 
           {/* Message */}
-          <div className="text-sm">
+          <div className={compact ? 'text-sm' : 'text-sm'}>
             {typeof message === 'string' ? (
               <p>{message}</p>
             ) : (
@@ -72,7 +73,7 @@ function ErrorAlert({
           </div>
 
           {/* Details */}
-          {details && (
+          {details && !compact && (
             <details className="mt-2">
               <summary className="cursor-pointer text-sm opacity-75 hover:opacity-100">
                 Details anzeigen
@@ -88,7 +89,7 @@ function ErrorAlert({
         {onClose && (
           <button
             onClick={onClose}
-            className="flex-shrink-0 p-1 hover:bg-black hover:bg-opacity-10 rounded"
+            className="flex-shrink-0 p-1 hover:bg-black hover:bg-opacity-10 rounded transition-colors"
             title="Schließen"
           >
             <X size={16} />
@@ -99,92 +100,47 @@ function ErrorAlert({
   );
 }
 
-// Specialized alert components
-export function ErrorMessage({ error, onClose, className = '' }) {
-  // Extract error information
-  const getErrorInfo = (err) => {
-    if (typeof err === 'string') {
-      return { message: err, details: null };
+// Success Message Component
+export function SuccessMessage({ 
+  message, 
+  className = '',
+  onClose = null,
+  autoClose = true,
+  duration = 3000
+}) {
+  useEffect(() => {
+    if (autoClose && onClose) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, duration);
+      
+      return () => clearTimeout(timer);
     }
-    
-    if (err?.response?.data) {
-      return {
-        message: err.response.data.message || err.response.data.error || 'Ein Fehler ist aufgetreten',
-        details: err.response.data.details || err.response.data
-      };
-    }
-    
-    if (err?.message) {
-      return {
-        message: err.message,
-        details: err.stack || err
-      };
-    }
-    
-    return {
-      message: 'Ein unbekannter Fehler ist aufgetreten',
-      details: err
-    };
-  };
+  }, [autoClose, duration, onClose]);
 
-  const { message, details } = getErrorInfo(error);
-
-  return (
-    <ErrorAlert
-      type="error"
-      message={message}
-      details={details}
-      onClose={onClose}
-      className={className}
-    />
-  );
-}
-
-export function SuccessMessage({ message, onClose, className = '' }) {
   return (
     <ErrorAlert
       type="success"
       message={message}
       onClose={onClose}
       className={className}
+      compact
     />
   );
 }
 
-export function WarningMessage({ message, onClose, className = '' }) {
-  return (
-    <ErrorAlert
-      type="warning"
-      message={message}
-      onClose={onClose}
-      className={className}
-    />
-  );
-}
-
-export function InfoMessage({ message, onClose, className = '' }) {
-  return (
-    <ErrorAlert
-      type="info"
-      message={message}
-      onClose={onClose}
-      className={className}
-    />
-  );
-}
-
-// Toast notification component (for future use)
-export function Toast({ 
-  type = 'info', 
+// Toast Notification Component for floating messages
+export function ToastNotification({ 
+  type = 'info',
   message, 
-  duration = 5000, 
-  onClose,
-  show = true 
+  show = true,
+  onClose = null,
+  duration = 5000
 }) {
-  React.useEffect(() => {
-    if (show && duration > 0) {
+  useEffect(() => {
+    if (show && onClose && duration > 0) {
       const timer = setTimeout(() => {
-        onClose?.();
+        onClose();
       }, duration);
       
       return () => clearTimeout(timer);
@@ -194,14 +150,38 @@ export function Toast({
   if (!show) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 w-80">
+    <div className="fixed top-4 right-4 z-1000 w-80">
       <ErrorAlert
         type={type}
         message={message}
         onClose={onClose}
-        className="shadow-lg"
+        className="shadow-xl"
+        compact
       />
     </div>
+  );
+}
+
+// Compact System Status Alert for the main app
+export function SystemStatusAlert({ systemStatus, onClose }) {
+  const critical = !systemStatus.backend;
+  const warning = systemStatus.backend && !systemStatus.dvbViewer;
+  
+  if (!critical && !warning) return null;
+
+  const type = critical ? 'error' : 'warning';
+  const message = critical 
+    ? 'Backend nicht erreichbar - Überprüfen Sie die Verbindung' 
+    : 'DVB Viewer offline - Aufnahmen können nicht erstellt werden';
+
+  return (
+    <ErrorAlert
+      type={type}
+      message={message}
+      onClose={onClose}
+      compact
+      className="mb-4"
+    />
   );
 }
 

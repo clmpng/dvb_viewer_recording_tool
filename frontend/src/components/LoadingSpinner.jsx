@@ -57,7 +57,7 @@ function LoadingSpinner({
 export function LoadingCard({ text = 'Laden...' }) {
   return (
     <div className="card">
-      <div className="card-body">
+      <div className="card-body py-8 text-center">
         <LoadingSpinner size="md" text={text} />
       </div>
     </div>
@@ -68,9 +68,11 @@ export function LoadingOverlay({ text = 'Laden...', show = true }) {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 shadow-lg">
-        <LoadingSpinner size="lg" text={text} />
+    <div className="modal-overlay">
+      <div className="card max-w-sm w-full">
+        <div className="card-body text-center">
+          <LoadingSpinner size="lg" text={text} />
+        </div>
       </div>
     </div>
   );

@@ -42,12 +42,12 @@ function Navigation({ currentView, onNavigate, systemStatus, onRefresh }) {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="container">
-        <div className="flex items-center justify-between py-4">
+    <nav className="card mb-6">
+      <div className="card-body py-4">
+        <div className="flex items-center justify-between">
           {/* Logo/Title */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center shadow-lg">
               <Tv size={24} />
             </div>
             <div>
@@ -61,7 +61,7 @@ function Navigation({ currentView, onNavigate, systemStatus, onRefresh }) {
           </div>
 
           {/* Navigation Items */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
@@ -70,13 +70,7 @@ function Navigation({ currentView, onNavigate, systemStatus, onRefresh }) {
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                    ${isActive 
-                      ? 'bg-blue-100 text-blue-700 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }
-                  `}
+                  className={`btn ${isActive ? 'btn-primary' : 'btn-outline'} transition-all`}
                   title={item.description}
                 >
                   <Icon size={18} />
@@ -90,13 +84,14 @@ function Navigation({ currentView, onNavigate, systemStatus, onRefresh }) {
           <div className="flex items-center gap-3">
             {/* System Status Indicator */}
             <div className="flex items-center gap-2">
-              <div className={`
-                w-2 h-2 rounded-full
-                ${getStatusColor() === 'green' ? 'bg-green-500' : ''}
-                ${getStatusColor() === 'yellow' ? 'bg-yellow-500' : ''}
-                ${getStatusColor() === 'red' ? 'bg-red-500' : ''}
-              `} />
-              <span className="text-sm text-gray-600 hidden sm:inline">
+              <div className={`w-2 h-2 rounded-full ${
+                getStatusColor() === 'green' ? 'bg-green-500' :
+                getStatusColor() === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <span className={`text-sm font-medium ${
+                getStatusColor() === 'green' ? 'text-green-600' :
+                getStatusColor() === 'yellow' ? 'text-yellow-600' : 'text-red-600'
+              }`}>
                 {getStatusText()}
               </span>
             </div>
@@ -105,38 +100,10 @@ function Navigation({ currentView, onNavigate, systemStatus, onRefresh }) {
             <button
               onClick={onRefresh}
               className="btn btn-outline btn-sm"
-              title="System-Status aktualisieren"
+              title="Daten aktualisieren"
             >
               <RefreshCw size={16} />
-              <span className="hidden md:inline">Aktualisieren</span>
             </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation (if needed) */}
-        <div className="md:hidden border-t border-gray-200 pt-2 pb-1">
-          <div className="flex justify-around">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentView === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className={`
-                    flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs transition-all
-                    ${isActive 
-                      ? 'text-blue-700 bg-blue-50' 
-                      : 'text-gray-600'
-                    }
-                  `}
-                >
-                  <Icon size={16} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>

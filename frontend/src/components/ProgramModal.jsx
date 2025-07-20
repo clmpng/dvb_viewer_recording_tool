@@ -74,28 +74,30 @@ function ProgramModal({
    * Get genre badge color
    */
   const getGenreBadgeClass = (genre) => {
-    const color = formatters.getGenreBadgeColor(genre);
-    return `badge badge-${color}`;
+    const genreColors = {
+      'Spielfilm': 'badge-blue',
+      'Serie': 'badge-purple',
+      'Nachrichten': 'badge-red',
+      'Sport': 'badge-green',
+      'Dokumentation': 'badge-yellow',
+      'Unterhaltung': 'badge-blue',
+      'Kinder': 'badge-purple',
+      'Musik': 'badge-green'
+    };
+    return genreColors[genre] || 'badge-gray';
   };
 
   /**
    * Format program duration
    */
   const formatDuration = (details) => {
-    if (!details?.additionalInfo) return null;
-    
-    const durationMatch = details.additionalInfo.match(/(\d+)\s*Minuten/);
-    if (durationMatch) {
-      const minutes = parseInt(durationMatch[1]);
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      
-      if (hours > 0) {
-        return `${hours}h ${remainingMinutes}min`;
-      }
-      return `${minutes}min`;
+    if (details.startTime && details.endTime) {
+      const start = new Date(`1970-01-01T${details.startTime}`);
+      const end = new Date(`1970-01-01T${details.endTime}`);
+      const diffMs = end - start;
+      const minutes = Math.floor(diffMs / 60000);
+      return `${Math.floor(minutes / 60)}:${(minutes % 60).toString().padStart(2, '0')} h`;
     }
-    
     return null;
   };
 
@@ -103,83 +105,79 @@ function ProgramModal({
    * Extract format information
    */
   const extractFormats = (details) => {
-    if (!details?.additionalInfo) return [];
-    
     const formats = [];
-    const info = details.additionalInfo.toLowerCase();
-    
-    if (info.includes('hd')) formats.push('HD');
-    if (info.includes('16:9')) formats.push('16:9');
-    if (info.includes('stereo')) formats.push('Stereo');
-    if (info.includes('dolby')) formats.push('Dolby');
-    
+    if (details.additionalInfo) {
+      const info = details.additionalInfo.toLowerCase();
+      if (info.includes('hd') || info.includes('720p') || info.includes('1080')) formats.push('HD');
+      if (info.includes('stereo')) formats.push('Stereo');
+      if (info.includes('dolby')) formats.push('Dolby');
+      if (info.includes('16:9')) formats.push('16:9');
+    }
     return formats;
   };
 
-  if (!program) return null;
-
   return (
-    <div 
-      className="modal-overlay"
-      onClick={handleOverlayClick}
-    >
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-content">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-200">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock size={16} className="text-blue-600" />
-              <span className="text-sm font-medium text-blue-600">
-                {program.time}
-              </span>
-              {program.endTime && (
-                <span className="text-sm text-gray-500">
-                  - {program.endTime}
+        <div className="card-header">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock size={16} className="text-blue-600" />
+                <span className="text-sm font-medium text-blue-600">
+                  {program.time}
                 </span>
-              )}
+                {program.endTime && (
+                  <span className="text-sm text-gray-500">
+                    - {program.endTime}
+                  </span>
+                )}
+              </div>
+              
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                {program.title}
+              </h2>
+              
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`badge ${getGenreBadgeClass(program.genre)}`}>
+                  {program.genre}
+                </span>
+                
+                {program.channelId && (
+                  <span className="badge badge-gray">
+                    <Tv size={12} className="mr-1" />
+                    Channel {program.channelId}
+                  </span>
+                )}
+                
+                {program.day !== undefined && (
+                  <span className="badge badge-gray">
+                    <Calendar size={12} className="mr-1" />
+                    {formatters.getDayName(program.day)}
+                  </span>
+                )}
+              </div>
             </div>
             
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {program.title}
-            </h2>
-            
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={getGenreBadgeClass(program.genre)}>
-                {program.genre}
-              </span>
-              
-              {program.channelId && (
-                <span className="badge badge-gray">
-                  <Tv size={12} className="mr-1" />
-                  Channel {program.channelId}
-                </span>
-              )}
-              
-              {program.day !== undefined && (
-                <span className="badge badge-gray">
-                  <Calendar size={12} className="mr-1" />
-                  {formatters.getDayName(program.day)}
-                </span>
-              )}
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Schließen"
+            >
+              <X size={20} />
+            </button>
           </div>
-          
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Schließen"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="card-body">
           {error && (
             <ErrorAlert
               message={error}
               onClose={() => setError(null)}
               className="mb-4"
+              compact
             />
           )}
 
@@ -258,35 +256,30 @@ function ProgramModal({
               <p className="text-gray-600">
                 Detaillierte Informationen konnten nicht geladen werden.
               </p>
-              <button
-                onClick={loadProgramDetails}
-                className="btn btn-outline btn-sm mt-4"
-              >
-                Erneut versuchen
-              </button>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="btn btn-outline"
-          >
-            Schließen
-          </button>
-          
-          <button
-            onClick={() => {
-              onCreateTimer();
-              onClose();
-            }}
-            className="btn btn-primary"
-          >
-            <Play size={16} />
-            Aufnahme erstellen
-          </button>
+        <div className="card-footer">
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="btn btn-outline"
+            >
+              Schließen
+            </button>
+            
+            {programDetails && (
+              <button
+                onClick={onCreateTimer}
+                className="btn btn-primary"
+              >
+                <Play size={16} />
+                Timer erstellen
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
