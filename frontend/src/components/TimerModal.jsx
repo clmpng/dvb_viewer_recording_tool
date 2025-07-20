@@ -6,7 +6,10 @@ import {
   Clock,
   Settings,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Tv,
+  Zap,
+  Info
 } from 'lucide-react';
 import { apiService, formatters } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
@@ -106,7 +109,7 @@ function TimerModal({
       }));
     }
 
-    // Auto-calculate end time if start time or duration changes
+    // Auto-calculate end time if start time changes
     if (field === 'startTime' && value) {
       const endTime = calculateEndTime(value, 120); // Default 2h
       setTimerData(prev => ({
@@ -204,13 +207,13 @@ function TimerModal({
       const response = await apiService.createTimer(timerPayload);
       
       console.log('Timer created successfully:', response);
-      setSuccess('Timer wurde erfolgreich erstellt!');
+      setSuccess('Timer wurde erfolgreich erstellt! ✨');
       
       // Close modal after short delay
       setTimeout(() => {
         onSuccess?.();
         onClose();
-      }, 1500);
+      }, 2000);
 
     } catch (err) {
       console.error('Timer creation failed:', err);
@@ -247,6 +250,7 @@ function TimerModal({
   if (!program) return null;
 
   const channel = channels[program.channelId];
+  const isChannelAvailable = channel && (!channel.note || !channel.note.includes('Nicht in DVB Viewer verfügbar'));
 
   return (
     <div 
@@ -255,49 +259,87 @@ function TimerModal({
     >
       <div className="modal-content">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Play size={20} />
-              Timer erstellen
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Aufnahme für "{formatters.truncateText(program.title, 50)}"
-            </p>
+        <div className="card-header">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                <Play size={24} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  Aufnahme erstellen
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  {formatters.truncateText(program.title, 60)}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Tv size={14} className="text-blue-600" />
+                  <span className="text-sm text-gray-600">
+                    {channel?.displayName || channel?.name || `Channel ${program.channelId}`}
+                  </span>
+                  {!isChannelAvailable && (
+                    <span className="badge badge-yellow text-xs">
+                      ⚠️ Nicht verfügbar
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Schließen"
+            >
+              <X size={20} />
+            </button>
           </div>
-          
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Schließen"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="card-body">
+          {/* Channel Availability Warning */}
+          {!isChannelAvailable && (
+            <div className="alert alert-warning mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold mb-1">Sender nicht verfügbar</h4>
+                  <p className="text-sm">
+                    Dieser Sender ist in Ihrem DVB Viewer nicht verfügbar. 
+                    Die Aufnahme kann nicht erstellt werden.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && (
             <ErrorAlert
               message={error}
               onClose={() => setError(null)}
-              className="mb-4"
+              className="mb-6"
             />
           )}
 
           {success && (
             <SuccessMessage
               message={success}
-              className="mb-4"
+              className="mb-6"
             />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Info size={18} />
+                Aufnahme-Details
+              </h3>
+
               {/* Title */}
-              <div className="md:col-span-2">
+              <div>
                 <label className="form-label">
                   Titel der Aufnahme *
                 </label>
@@ -314,163 +356,225 @@ function TimerModal({
                 )}
               </div>
 
-              {/* Channel Info */}
-              <div className="md:col-span-2 bg-gray-50 p-3 rounded-lg">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar size={16} className="text-blue-600" />
-                  <span className="font-medium">Sender:</span>
-                  <span>{channel?.name || `Channel ${program.channelId}`}</span>
-                  <span className="text-gray-500">•</span>
-                  <span>{formatters.getDayName(program.day || 0)}</span>
+              {/* Date and Time Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="form-label">
+                    <Calendar size={16} className="inline mr-2" />
+                    Datum *
+                  </label>
+                  <input
+                    type="text"
+                    className={`form-input ${validation.date ? 'border-red-300' : ''}`}
+                    value={timerData.date}
+                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="DD.MM.YYYY"
+                  />
+                  {validation.date && (
+                    <p className="text-red-600 text-sm mt-1">{validation.date}</p>
+                  )}
                 </div>
-              </div>
 
-              {/* Date */}
-              <div>
-                <label className="form-label">
-                  <Calendar size={16} className="inline mr-2" />
-                  Datum *
-                </label>
-                <input
-                  type="text"
-                  className={`form-input ${validation.date ? 'border-red-300' : ''}`}
-                  value={timerData.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="DD.MM.YYYY"
-                />
-                {validation.date && (
-                  <p className="text-red-600 text-sm mt-1">{validation.date}</p>
-                )}
-              </div>
+                <div>
+                  <label className="form-label">
+                    <Clock size={16} className="inline mr-2" />
+                    Startzeit *
+                  </label>
+                  <input
+                    type="text"
+                    className={`form-input ${validation.startTime ? 'border-red-300' : ''}`}
+                    value={timerData.startTime}
+                    onChange={(e) => handleInputChange('startTime', e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="HH:MM"
+                  />
+                  {validation.startTime && (
+                    <p className="text-red-600 text-sm mt-1">{validation.startTime}</p>
+                  )}
+                </div>
 
-              {/* Start Time */}
-              <div>
-                <label className="form-label">
-                  <Clock size={16} className="inline mr-2" />
-                  Startzeit *
-                </label>
-                <input
-                  type="text"
-                  className={`form-input ${validation.startTime ? 'border-red-300' : ''}`}
-                  value={timerData.startTime}
-                  onChange={(e) => handleInputChange('startTime', e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="HH:MM"
-                />
-                {validation.startTime && (
-                  <p className="text-red-600 text-sm mt-1">{validation.startTime}</p>
-                )}
-              </div>
-
-              {/* End Time */}
-              <div>
-                <label className="form-label">Endzeit *</label>
-                <input
-                  type="text"
-                  className={`form-input ${validation.endTime ? 'border-red-300' : ''}`}
-                  value={timerData.endTime}
-                  onChange={(e) => handleInputChange('endTime', e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="HH:MM"
-                />
-                {validation.endTime && (
-                  <p className="text-red-600 text-sm mt-1">{validation.endTime}</p>
-                )}
+                <div>
+                  <label className="form-label">Endzeit *</label>
+                  <input
+                    type="text"
+                    className={`form-input ${validation.endTime ? 'border-red-300' : ''}`}
+                    value={timerData.endTime}
+                    onChange={(e) => handleInputChange('endTime', e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="HH:MM"
+                  />
+                  {validation.endTime && (
+                    <p className="text-red-600 text-sm mt-1">{validation.endTime}</p>
+                  )}
+                </div>
               </div>
 
               {/* Series */}
               <div>
-                <label className="form-label">Serie (optional)</label>
+                <label className="form-label">
+                  Serie (optional)
+                  <span className="text-xs text-gray-500 ml-2">Für bessere Organisation</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
                   value={timerData.series}
                   onChange={(e) => handleInputChange('series', e.target.value)}
                   disabled={isSubmitting}
-                  placeholder="Serienname für bessere Organisation"
+                  placeholder="z.B. Tatort, Dokumentation..."
                 />
               </div>
             </div>
 
             {/* Advanced Settings Toggle */}
-            <div className="border-t pt-4">
+            <div className="border-t pt-6">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
                 disabled={isSubmitting}
               >
-                <Settings size={16} />
-                Erweiterte Einstellungen {showAdvanced ? 'ausblenden' : 'anzeigen'}
+                <Settings size={18} />
+                Erweiterte Einstellungen
+                <svg 
+                  className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
             </div>
 
             {/* Advanced Settings */}
             {showAdvanced && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
-                {/* Pre-buffer */}
-                <div>
-                  <label className="form-label">Vorlauf (Min)</label>
-                  <input
-                    type="number"
-                    className={`form-input ${validation.epgBefore ? 'border-red-300' : ''}`}
-                    value={timerData.epgBefore}
-                    onChange={(e) => handleInputChange('epgBefore', e.target.value)}
-                    disabled={isSubmitting}
-                    min="0"
-                    max="60"
-                  />
-                  {validation.epgBefore && (
-                    <p className="text-red-600 text-xs mt-1">{validation.epgBefore}</p>
-                  )}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Zap size={18} />
+                  Erweiterte Optionen
+                </h3>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Pre-buffer */}
+                  <div>
+                    <label className="form-label">
+                      Vorlauf (Min)
+                      <span className="text-xs text-gray-500 block">Früher starten</span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`form-input ${validation.epgBefore ? 'border-red-300' : ''}`}
+                      value={timerData.epgBefore}
+                      onChange={(e) => handleInputChange('epgBefore', e.target.value)}
+                      disabled={isSubmitting}
+                      min="0"
+                      max="60"
+                    />
+                    {validation.epgBefore && (
+                      <p className="text-red-600 text-xs mt-1">{validation.epgBefore}</p>
+                    )}
+                  </div>
+
+                  {/* Post-buffer */}
+                  <div>
+                    <label className="form-label">
+                      Nachlauf (Min)
+                      <span className="text-xs text-gray-500 block">Länger aufnehmen</span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`form-input ${validation.epgAfter ? 'border-red-300' : ''}`}
+                      value={timerData.epgAfter}
+                      onChange={(e) => handleInputChange('epgAfter', e.target.value)}
+                      disabled={isSubmitting}
+                      min="0"
+                      max="60"
+                    />
+                    {validation.epgAfter && (
+                      <p className="text-red-600 text-xs mt-1">{validation.epgAfter}</p>
+                    )}
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label className="form-label">
+                      Priorität
+                      <span className="text-xs text-gray-500 block">0-100</span>
+                    </label>
+                    <input
+                      type="number"
+                      className={`form-input ${validation.priority ? 'border-red-300' : ''}`}
+                      value={timerData.priority}
+                      onChange={(e) => handleInputChange('priority', e.target.value)}
+                      disabled={isSubmitting}
+                      min="0"
+                      max="100"
+                    />
+                    {validation.priority && (
+                      <p className="text-red-600 text-xs mt-1">{validation.priority}</p>
+                    )}
+                  </div>
+
+                  {/* Folder */}
+                  <div>
+                    <label className="form-label">
+                      Ordner
+                      <span className="text-xs text-gray-500 block">Zielordner</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={timerData.folder}
+                      onChange={(e) => handleInputChange('folder', e.target.value)}
+                      disabled={isSubmitting}
+                      placeholder="Auto"
+                    />
+                  </div>
                 </div>
 
-                {/* Post-buffer */}
+                {/* Quick presets */}
                 <div>
-                  <label className="form-label">Nachlauf (Min)</label>
-                  <input
-                    type="number"
-                    className={`form-input ${validation.epgAfter ? 'border-red-300' : ''}`}
-                    value={timerData.epgAfter}
-                    onChange={(e) => handleInputChange('epgAfter', e.target.value)}
-                    disabled={isSubmitting}
-                    min="0"
-                    max="60"
-                  />
-                  {validation.epgAfter && (
-                    <p className="text-red-600 text-xs mt-1">{validation.epgAfter}</p>
-                  )}
-                </div>
-
-                {/* Priority */}
-                <div>
-                  <label className="form-label">Priorität</label>
-                  <input
-                    type="number"
-                    className={`form-input ${validation.priority ? 'border-red-300' : ''}`}
-                    value={timerData.priority}
-                    onChange={(e) => handleInputChange('priority', e.target.value)}
-                    disabled={isSubmitting}
-                    min="0"
-                    max="100"
-                  />
-                  {validation.priority && (
-                    <p className="text-red-600 text-xs mt-1">{validation.priority}</p>
-                  )}
-                </div>
-
-                {/* Folder */}
-                <div>
-                  <label className="form-label">Ordner</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={timerData.folder}
-                    onChange={(e) => handleInputChange('folder', e.target.value)}
-                    disabled={isSubmitting}
-                    placeholder="Auto"
-                  />
+                  <label className="form-label mb-2">Schnelleinstellungen</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('epgBefore', 2);
+                        handleInputChange('epgAfter', 5);
+                        handleInputChange('priority', 30);
+                      }}
+                      className="btn btn-outline btn-sm"
+                      disabled={isSubmitting}
+                    >
+                      Niedrig
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('epgBefore', 5);
+                        handleInputChange('epgAfter', 10);
+                        handleInputChange('priority', 50);
+                      }}
+                      className="btn btn-outline btn-sm"
+                      disabled={isSubmitting}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('epgBefore', 10);
+                        handleInputChange('epgAfter', 20);
+                        handleInputChange('priority', 80);
+                      }}
+                      className="btn btn-outline btn-sm"
+                      disabled={isSubmitting}
+                    >
+                      Wichtig
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -478,36 +582,38 @@ function TimerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <AlertCircle size={16} />
-            <span>DVB Viewer muss für die Aufnahme laufen</span>
-          </div>
-          
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="btn btn-outline"
-            >
-              Abbrechen
-            </button>
+        <div className="card-footer">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <AlertCircle size={16} />
+              <span>DVB Viewer muss für die Aufnahme laufen</span>
+            </div>
             
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !!success}
-              className="btn btn-primary"
-            >
-              {isSubmitting ? (
-                <LoadingSpinner size="sm" inline />
-              ) : success ? (
-                <CheckCircle size={16} />
-              ) : (
-                <Play size={16} />
-              )}
-              {isSubmitting ? 'Erstelle...' : success ? 'Erstellt!' : 'Timer erstellen'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="btn btn-outline"
+              >
+                Abbrechen
+              </button>
+              
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !!success || !isChannelAvailable}
+                className="btn btn-primary"
+              >
+                {isSubmitting ? (
+                  <LoadingSpinner size="sm" inline />
+                ) : success ? (
+                  <CheckCircle size={16} />
+                ) : (
+                  <Play size={16} />
+                )}
+                {isSubmitting ? 'Erstelle...' : success ? 'Erstellt!' : 'Timer erstellen'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

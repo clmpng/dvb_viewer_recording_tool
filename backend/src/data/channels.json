@@ -1,177 +1,212 @@
 {
   "71": {
-    "name": "Das Erste",
+    "name": "Das Erste HD",
     "dvbId": "4135436344991125545",
-    "category": "öffentlich-rechtlich"
+    "category": "öffentlich-rechtlich",
+    "horzuId": "71"
+  },
+  "146": {
+    "name": "ONE HD", 
+    "dvbId": "4135466628805546056",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "146"
   },
   "37": {
-    "name": "ZDF",
-    "dvbId": "4135697148290266197",
-    "category": "öffentlich-rechtlich"
+    "name": "ZDF HD",
+    "dvbId": "4135697148290266197", 
+    "category": "öffentlich-rechtlich",
+    "horzuId": "37"
+  },
+  "276": {
+    "name": "ZDFinfo HD",
+    "dvbId": "4135515114691354493",
+    "category": "öffentlich-rechtlich", 
+    "horzuId": "276"
+  },
+  "659": {
+    "name": "ZDFneo HD",
+    "dvbId": "4135711454826294153",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "659"
+  },
+  "56": {
+    "name": "3sat HD",
+    "dvbId": "4135614117982499715",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "56"
+  },
+  "58": {
+    "name": "arte HD",
+    "dvbId": "4135460297644191118", 
+    "category": "öffentlich-rechtlich",
+    "horzuId": "58"
+  },
+  "57": {
+    "name": "KiKa HD",
+    "dvbId": "4135486677712837638",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "57"
+  },
+  "104": {
+    "name": "ARD-alpha HD", 
+    "dvbId": "4135497591224764644",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "104"
+  },
+  "51": {
+    "name": "BR Fernsehen Nord HD",
+    "dvbId": "4135691478933407371",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "51"
+  },
+  "49": {
+    "name": "hr-fernsehen HD",
+    "dvbId": "4135462720385292522", 
+    "category": "öffentlich-rechtlich",
+    "horzuId": "49"
+  },
+  "48": {
+    "name": "MDR Sachsen HD",
+    "dvbId": "4135568526904594194",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "48"
+  },
+  "47": {
+    "name": "NDR FS HH HD",
+    "dvbId": "4135559958444885535",
+    "category": "öffentlich-rechtlich", 
+    "horzuId": "47"
+  },
+  "52": {
+    "name": "rbb Berlin HD",
+    "dvbId": "4135506696076454450",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "52"
+  },
+  "50": {
+    "name": "SWR BW HD",
+    "dvbId": "4135462771924891720",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "50"
+  },
+  "46": {
+    "name": "WDR Fernsehen",
+    "dvbId": "4135465855711400607",
+    "category": "öffentlich-rechtlich",
+    "horzuId": "46"
+  },
+  "194": {
+    "name": "phoenix",
+    "dvbId": "4135528021068034502",
+    "category": "nachrichten",
+    "horzuId": "194"
+  },
+  "100": {
+    "name": "tagesschau24 HD", 
+    "dvbId": "4135689154877096917",
+    "category": "nachrichten",
+    "horzuId": "100"
+  },
+  "175": {
+    "name": "Welt HD",
+    "dvbId": "4135640355429291218",
+    "category": "nachrichten",
+    "horzuId": "175"
+  },
+  "66": {
+    "name": "n-tv",
+    "dvbId": "4135466911765004799",
+    "category": "nachrichten",
+    "horzuId": "66"
+  },
+  "64": {
+    "name": "Sport1",
+    "dvbId": "4135537327766107577",
+    "category": "sport", 
+    "horzuId": "64"
   },
   "38": {
     "name": "RTL",
     "dvbId": "4135000000000000001",
-    "category": "privat"
+    "category": "privat",
+    "horzuId": "38",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "39": {
-    "name": "Sat.1",
+    "name": "Sat.1", 
     "dvbId": "4135000000000000002",
-    "category": "privat"
+    "category": "privat",
+    "horzuId": "39",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "40": {
     "name": "ProSieben",
-    "dvbId": "4135000000000000003",
-    "category": "privat"
+    "dvbId": "4135000000000000003", 
+    "category": "privat",
+    "horzuId": "40",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "41": {
     "name": "RTL Zwei",
     "dvbId": "4135000000000000004",
-    "category": "privat"
+    "category": "privat",
+    "horzuId": "41", 
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "44": {
     "name": "Kabel Eins",
     "dvbId": "4135000000000000005",
-    "category": "privat"
+    "category": "privat",
+    "horzuId": "44",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "42": {
     "name": "VOX",
     "dvbId": "4135000000000000006",
-    "category": "privat"
-  },
-  "56": {
-    "name": "3sat",
-    "dvbId": "4135614117982499715",
-    "category": "öffentlich-rechtlich"
-  },
-  "58": {
-    "name": "Arte",
-    "dvbId": "4135460297644191118",
-    "category": "öffentlich-rechtlich"
+    "category": "privat", 
+    "horzuId": "42",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "43": {
     "name": "Super RTL",
     "dvbId": "4135000000000000007",
-    "category": "privat"
-  },
-  "57": {
-    "name": "KiKA",
-    "dvbId": "4135486677712837638",
-    "category": "öffentlich-rechtlich"
-  },
-  "46": {
-    "name": "WDR",
-    "dvbId": "4135465855711400607",
-    "category": "öffentlich-rechtlich"
-  },
-  "47": {
-    "name": "NDR",
-    "dvbId": "4135559958444885535",
-    "category": "öffentlich-rechtlich"
-  },
-  "48": {
-    "name": "MDR",
-    "dvbId": "4135568526904594194",
-    "category": "öffentlich-rechtlich"
-  },
-  "50": {
-    "name": "SWR",
-    "dvbId": "4135462771924891720",
-    "category": "öffentlich-rechtlich"
-  },
-  "49": {
-    "name": "HR",
-    "dvbId": "4135462720385292522",
-    "category": "öffentlich-rechtlich"
-  },
-  "52": {
-    "name": "RBB",
-    "dvbId": "4135506696076454450",
-    "category": "öffentlich-rechtlich"
-  },
-  "51": {
-    "name": "BR",
-    "dvbId": "4135691478933407371",
-    "category": "öffentlich-rechtlich"
-  },
-  "104": {
-    "name": "ARD alpha",
-    "dvbId": "4135497591224764644",
-    "category": "öffentlich-rechtlich"
-  },
-  "66": {
-    "name": "n-tv",
-    "dvbId": "4135000000000000008",
-    "category": "nachrichten"
-  },
-  "175": {
-    "name": "WELT",
-    "dvbId": "4135640355429291218",
-    "category": "nachrichten"
-  },
-  "194": {
-    "name": "Phoenix",
-    "dvbId": "4135528021068034502",
-    "category": "nachrichten"
-  },
-  "100": {
-    "name": "tagesschau24",
-    "dvbId": "4135689154877096917",
-    "category": "nachrichten"
-  },
-  "659": {
-    "name": "ZDFneo",
-    "dvbId": "4135711454826294153",
-    "category": "öffentlich-rechtlich"
-  },
-  "276": {
-    "name": "ZDFinfo",
-    "dvbId": "4135515114691354493",
-    "category": "öffentlich-rechtlich"
-  },
-  "146": {
-    "name": "One",
-    "dvbId": "4135466628805546056",
-    "category": "öffentlich-rechtlich"
-  },
-  "65": {
-    "name": "Eurosport 1",
-    "dvbId": "4135000000000000009",
-    "category": "sport"
-  },
-  "64": {
-    "name": "SPORT1",
-    "dvbId": "4135537327766107577",
-    "category": "sport"
-  },
-  "139": {
-    "name": "Disney Channel",
-    "dvbId": "4135000000000000010",
-    "category": "kinder"
+    "category": "privat",
+    "horzuId": "43",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "277": {
     "name": "Tele 5",
     "dvbId": "4135000000000000011",
-    "category": "privat"
+    "category": "privat",
+    "horzuId": "277",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "54": {
     "name": "ORF 1",
-    "dvbId": "4135000000000000012",
-    "category": "österreich"
+    "dvbId": "4135000000000000012", 
+    "category": "österreich",
+    "horzuId": "54",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "55": {
     "name": "ORF 2",
     "dvbId": "4135000000000000013",
-    "category": "österreich"
+    "category": "österreich",
+    "horzuId": "55",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "59": {
     "name": "SRF 1",
     "dvbId": "4135000000000000014",
-    "category": "schweiz"
+    "category": "schweiz",
+    "horzuId": "59",
+    "note": "Nicht in DVB Viewer verfügbar"
   },
   "60": {
-    "name": "SRF zwei",
+    "name": "SRF zwei", 
     "dvbId": "4135000000000000015",
-    "category": "schweiz"
+    "category": "schweiz",
+    "horzuId": "60",
+    "note": "Nicht in DVB Viewer verfügbar"
   }
 }
