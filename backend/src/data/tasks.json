@@ -21,10 +21,64 @@
       "series": "",
       "defaultDuration": 120,
       "createdAt": "2025-07-20T08:03:58.822Z",
+      "lastRun": "2025-07-20T12:05:19.616Z",
+      "matchCount": 2,
+      "timerCount": 0
+    },
+    {
+      "id": "2",
+      "name": "Tagesschau",
+      "type": "title_contains",
+      "criteria": "Tagesschau",
+      "channels": [],
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "active": true,
+      "priority": 50,
+      "preBuffer": 5,
+      "postBuffer": 10,
+      "folder": "Auto",
+      "series": "",
+      "defaultDuration": 120,
+      "createdAt": "2025-07-20T12:05:05.302Z",
+      "lastRun": null,
+      "matchCount": 0,
+      "timerCount": 0
+    },
+    {
+      "id": "3",
+      "name": "Spielfilme",
+      "type": "genre",
+      "criteria": "Spielfilm",
+      "channels": [],
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "active": true,
+      "priority": 50,
+      "preBuffer": 5,
+      "postBuffer": 10,
+      "folder": "Auto",
+      "series": "",
+      "defaultDuration": 120,
+      "createdAt": "2025-07-20T12:06:19.577Z",
       "lastRun": null,
       "matchCount": 0,
       "timerCount": 0
     }
   ],
-  "lastId": 1
+  "lastId": 3
 }

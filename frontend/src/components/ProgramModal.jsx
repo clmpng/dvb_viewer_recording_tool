@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   X, 
   Clock, 
@@ -6,9 +6,11 @@ import {
   Tv,
   Play,
   Info,
-  Eye
+  Eye,
+  Loader
 } from 'lucide-react';
-import { formatters } from '../services/api';
+import { formatters, apiService } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 function ProgramModal({ 
   program, 
@@ -16,6 +18,10 @@ function ProgramModal({
   onClose, 
   onCreateTimer 
 }) {
+  // State für Details-Loading
+  const [programDetails, setProgramDetails] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState(null);
 
   /**
    * Handle click outside modal to close
@@ -39,6 +45,43 @@ function ProgramModal({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
+
+  /**
+   * Load program details when modal opens
+   */
+  useEffect(() => {
+    if (program?.id) {
+      loadProgramDetails();
+    }
+  }, [program?.id]);
+
+  /**
+   * Load detailed program information
+   */
+  const loadProgramDetails = async () => {
+    if (!program?.id) return;
+
+    setIsLoadingDetails(true);
+    setDetailsError(null);
+    setProgramDetails(null);
+
+    try {
+      console.log(`🔍 Loading details for program ${program.id}...`);
+      const response = await apiService.getProgramDetails(program.id);
+      
+      if (response.success && response.data) {
+        setProgramDetails(response.data);
+        console.log(`✅ Loaded details for "${program.title}"`);
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load details for program ${program.id}:`, error);
+      setDetailsError(`Details konnten nicht geladen werden: ${error.message}`);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   /**
    * Get genre badge color
@@ -195,37 +238,86 @@ function ProgramModal({
               </div>
             </div>
 
-            {/* Program Description */}
-            {program.description ? (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Info size={16} />
-                  Beschreibung
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {program.description}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Info size={16} />
-                  Programmhinweise
-                </h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-500 italic">
-                    Für diese Sendung sind leider keine weiteren Details verfügbar.
-                  </p>
-                  <div className="mt-3 text-xs text-gray-500">
-                    <div><strong>Titel:</strong> {program.title}</div>
-                    <div><strong>Genre:</strong> {program.genre}</div>
-                    <div><strong>Uhrzeit:</strong> {program.time} - {program.endTime || 'unbekannt'}</div>
+            {/* Program Description - Enhanced with Details Loading */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <Info size={16} />
+                Programmdetails
+                {isLoadingDetails && <Loader size={14} className="animate-spin" />}
+              </h3>
+              
+              <div className="bg-gray-50 rounded-lg p-4">
+                {isLoadingDetails ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="text-center">
+                      <LoadingSpinner size="sm" />
+                      <p className="text-sm text-gray-600 mt-2">
+                        Lade Programmdetails...
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : detailsError ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-red-600 mb-3">
+                      {detailsError}
+                    </p>
+                    <button
+                      onClick={loadProgramDetails}
+                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Erneut versuchen
+                    </button>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-sm text-gray-600 italic">
+                        Basis-Informationen:
+                      </p>
+                      <div className="mt-2 text-xs text-gray-500 space-y-1">
+                        <div><strong>Titel:</strong> {program.title}</div>
+                        <div><strong>Genre:</strong> {program.genre}</div>
+                        <div><strong>Uhrzeit:</strong> {program.time} - {program.endTime || 'unbekannt'}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : programDetails?.description ? (
+                  <div>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">
+                      {programDetails.description}
+                    </p>
+                    
+                    {programDetails.additionalInfo && (
+                      <div className="pt-3 border-t border-gray-200">
+                        <p className="text-xs text-gray-600 font-medium mb-1">
+                          Weitere Informationen:
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {programDetails.additionalInfo}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {programDetails.date && programDetails.time && (
+                      <div className="pt-3 border-t border-gray-200 mt-3">
+                        <p className="text-xs text-gray-600">
+                          <strong>Originalsendezeit:</strong> {programDetails.date} um {programDetails.time} Uhr
+                          {programDetails.channel && ` auf ${programDetails.channel}`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500 italic mb-3">
+                      Für diese Sendung sind keine weiteren Details verfügbar.
+                    </p>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <div><strong>Titel:</strong> {program.title}</div>
+                      <div><strong>Genre:</strong> {program.genre}</div>
+                      <div><strong>Uhrzeit:</strong> {program.time} - {program.endTime || 'unbekannt'}</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Technical Information */}
             {channel && (
@@ -240,6 +332,19 @@ function ProgramModal({
                     <div><strong>Frequenz:</strong> {channel.frequency}</div>
                   )}
                   <div><strong>DVB Viewer:</strong> {channel.note?.includes('Nicht in DVB Viewer verfügbar') ? 'Nicht verfügbar' : 'Verfügbar'}</div>
+                  {program.detailUrl && (
+                    <div className="pt-2 border-t border-gray-200">
+                      <strong>Quelle:</strong> 
+                      <a 
+                        href={program.detailUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline ml-1"
+                      >
+                        Hörzu Details ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -248,21 +353,29 @@ function ProgramModal({
 
         {/* Footer */}
         <div className="card-footer">
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="btn btn-outline"
-            >
-              Schließen
-            </button>
+          <div className="flex justify-between items-center">
+            <div className="text-xs text-gray-500">
+              {isLoadingDetails ? 'Lade Details...' : 
+               programDetails ? 'Details geladen' : 
+               detailsError ? 'Details nicht verfügbar' : 'Basis-Informationen'}
+            </div>
             
-            <button
-              onClick={() => onCreateTimer(program)}
-              className="btn btn-primary"
-            >
-              <Play size={16} />
-              Timer erstellen
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="btn btn-outline"
+              >
+                Schließen
+              </button>
+              
+              <button
+                onClick={() => onCreateTimer(program)}
+                className="btn btn-primary"
+              >
+                <Play size={16} />
+                Timer erstellen
+              </button>
+            </div>
           </div>
         </div>
       </div>

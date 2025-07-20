@@ -13,7 +13,8 @@ import {
   Clock,
   Search,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { apiService, formatters } from '../services/api';
 import LoadingSpinner, { LoadingCard } from './LoadingSpinner';
@@ -31,6 +32,9 @@ function TaskManager({ channels, onError }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [showTaskDetails, setShowTaskDetails] = useState(null);
+
+  // Form states
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -60,6 +64,31 @@ function TaskManager({ channels, onError }) {
       onError?.(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handle task creation
+   */
+  const handleCreateTask = async (taskData) => {
+    setIsSubmitting(true);
+    try {
+      const response = await apiService.createTask(taskData);
+      
+      // Add new task to local state
+      setTasks(prev => [...prev, response.data]);
+      
+      setSuccess(`Task "${taskData.name}" erfolgreich erstellt`);
+      setTimeout(() => setSuccess(null), 5000);
+      
+      setShowCreateModal(false);
+      
+      console.log(`✅ Created task: "${taskData.name}"`);
+    } catch (err) {
+      console.error('Failed to create task:', err);
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -309,6 +338,387 @@ function TaskManager({ channels, onError }) {
     );
   };
 
+  /**
+   * Create Task Modal Component
+   */
+  const CreateTaskModal = () => {
+    const [formData, setFormData] = useState({
+      name: '',
+      type: 'title_contains',
+      criteria: '',
+      channels: [],
+      days: [0, 1, 2, 3, 4, 5, 6],
+      active: true,
+      priority: 50,
+      preBuffer: 5,
+      postBuffer: 10,
+      folder: 'Auto',
+      series: '',
+      defaultDuration: 120
+    });
+
+    const [formErrors, setFormErrors] = useState({});
+
+    const handleInputChange = (field, value) => {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+      
+      // Clear error when user starts typing
+      if (formErrors[field]) {
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: null
+        }));
+      }
+    };
+
+    const validateForm = () => {
+      const errors = {};
+      
+      if (!formData.name.trim()) {
+        errors.name = 'Name ist erforderlich';
+      }
+      
+      if (!formData.type) {
+        errors.type = 'Task-Typ ist erforderlich';
+      }
+      
+      if (!formData.criteria.trim()) {
+        errors.criteria = 'Kriterien sind erforderlich';
+      }
+
+      if (formData.priority < 0 || formData.priority > 100) {
+        errors.priority = 'Priorität muss zwischen 0 und 100 liegen';
+      }
+
+      if (formData.preBuffer < 0) {
+        errors.preBuffer = 'Pre-Buffer kann nicht negativ sein';
+      }
+
+      if (formData.postBuffer < 0) {
+        errors.postBuffer = 'Post-Buffer kann nicht negativ sein';
+      }
+
+      if (formData.defaultDuration < 1) {
+        errors.defaultDuration = 'Standard-Dauer muss mindestens 1 Minute betragen';
+      }
+      
+      setFormErrors(errors);
+      return Object.keys(errors).length === 0;
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      
+      if (!validateForm()) {
+        return;
+      }
+
+      // Parse criteria for complex types
+      let processedCriteria = formData.criteria;
+      if (formData.type === 'title_and_genre') {
+        try {
+          processedCriteria = JSON.parse(formData.criteria);
+        } catch (err) {
+          setFormErrors({ criteria: 'Ungültiges JSON-Format für Titel und Genre' });
+          return;
+        }
+      }
+
+      const taskData = {
+        ...formData,
+        criteria: processedCriteria,
+        channels: formData.channels.filter(ch => ch && ch.trim()),
+        priority: Number(formData.priority),
+        preBuffer: Number(formData.preBuffer),
+        postBuffer: Number(formData.postBuffer),
+        defaultDuration: Number(formData.defaultDuration)
+      };
+
+      handleCreateTask(taskData);
+    };
+
+    const handleChannelChange = (channelList) => {
+      const channels = channelList.split(',').map(ch => ch.trim()).filter(ch => ch);
+      handleInputChange('channels', channels);
+    };
+
+    const handleDayToggle = (day) => {
+      const currentDays = formData.days;
+      const newDays = currentDays.includes(day)
+        ? currentDays.filter(d => d !== day)
+        : [...currentDays, day].sort();
+      
+      handleInputChange('days', newDays);
+    };
+
+    const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content max-w-2xl">
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Neuen Task erstellen</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 hover:bg-gray-100 rounded"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Task-Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`input ${formErrors.name ? 'border-red-500' : ''}`}
+                    placeholder="z.B. Tatort aufnehmen"
+                  />
+                  {formErrors.name && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Task-Typ *
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => handleInputChange('type', e.target.value)}
+                    className="input"
+                  >
+                    {Object.entries(taskTypes).map(([key, type]) => (
+                      <option key={key} value={key}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Criteria */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Suchkriterien *
+                </label>
+                <input
+                  type="text"
+                  value={formData.criteria}
+                  onChange={(e) => handleInputChange('criteria', e.target.value)}
+                  className={`input ${formErrors.criteria ? 'border-red-500' : ''}`}
+                  placeholder={
+                    formData.type === 'title_and_genre' 
+                      ? '{"title": "Krimi", "genre": "Serie"}'
+                      : taskTypes[formData.type]?.example || 'Suchtext eingeben'
+                  }
+                />
+                {formErrors.criteria && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.criteria}</p>
+                )}
+                {taskTypes[formData.type]?.description && (
+                  <p className="text-gray-600 text-sm mt-1">
+                    {taskTypes[formData.type].description}
+                  </p>
+                )}
+              </div>
+
+              {/* Channels */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sender (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.channels.join(', ')}
+                  onChange={(e) => handleChannelChange(e.target.value)}
+                  className="input"
+                  placeholder="z.B. Das Erste, ZDF, ProSieben (kommagetrennt)"
+                />
+                <p className="text-gray-600 text-sm mt-1">
+                  Leer lassen für alle Sender
+                </p>
+              </div>
+
+              {/* Days */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Wochentage
+                </label>
+                <div className="flex gap-2">
+                  {dayNames.map((dayName, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleDayToggle(index)}
+                      className={`px-3 py-2 text-sm rounded ${
+                        formData.days.includes(index)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {dayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Advanced Settings */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Erweiterte Einstellungen</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priorität (0-100)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.priority}
+                      onChange={(e) => handleInputChange('priority', e.target.value)}
+                      className={`input ${formErrors.priority ? 'border-red-500' : ''}`}
+                      min="0"
+                      max="100"
+                    />
+                    {formErrors.priority && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.priority}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Standard-Dauer (Minuten)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.defaultDuration}
+                      onChange={(e) => handleInputChange('defaultDuration', e.target.value)}
+                      className={`input ${formErrors.defaultDuration ? 'border-red-500' : ''}`}
+                      min="1"
+                    />
+                    {formErrors.defaultDuration && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.defaultDuration}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pre-Buffer (Minuten)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.preBuffer}
+                      onChange={(e) => handleInputChange('preBuffer', e.target.value)}
+                      className={`input ${formErrors.preBuffer ? 'border-red-500' : ''}`}
+                      min="0"
+                    />
+                    {formErrors.preBuffer && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.preBuffer}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Post-Buffer (Minuten)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.postBuffer}
+                      onChange={(e) => handleInputChange('postBuffer', e.target.value)}
+                      className={`input ${formErrors.postBuffer ? 'border-red-500' : ''}`}
+                      min="0"
+                    />
+                    {formErrors.postBuffer && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.postBuffer}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ordner
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.folder}
+                      onChange={(e) => handleInputChange('folder', e.target.value)}
+                      className="input"
+                      placeholder="Auto"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Serie/Kategorie
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.series}
+                      onChange={(e) => handleInputChange('series', e.target.value)}
+                      className="input"
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.active}
+                      onChange={(e) => handleInputChange('active', e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Task sofort aktivieren</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Buttons */}
+            <div className="flex justify-end gap-3 mt-8 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="btn btn-outline"
+                disabled={isSubmitting}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Erstelle...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} />
+                    Task erstellen
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -415,27 +825,8 @@ function TaskManager({ channels, onError }) {
         </div>
       </div>
 
-      {/* Modals would go here */}
-      {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="p-6">
-              <h2 className="text-xl font-bold mb-4">Neuen Task erstellen</h2>
-              <p className="text-gray-600">
-                Task-Erstellung wird in einer zukünftigen Version implementiert.
-              </p>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn btn-outline"
-                >
-                  Schließen
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals */}
+      {showCreateModal && <CreateTaskModal />}
 
       {showTaskDetails && (
         <div className="modal-overlay">
@@ -460,35 +851,19 @@ function TaskManager({ channels, onError }) {
                     <div><strong>Status:</strong> {showTaskDetails.active ? 'Aktiv' : 'Inaktiv'}</div>
                     <div><strong>Kriterien:</strong> {getTaskCriteriaDisplay(showTaskDetails)}</div>
                     <div><strong>Priorität:</strong> {showTaskDetails.priority || 50}</div>
-                    <div><strong>Erstellt:</strong> {formatters.formatDateTime(showTaskDetails.createdAt)}</div>
-                    {showTaskDetails.lastRun && (
-                      <div><strong>Letzte Ausführung:</strong> {formatters.formatDateTime(showTaskDetails.lastRun)}</div>
-                    )}
+                    <div><strong>Sender:</strong> {showTaskDetails.channels?.length ? showTaskDetails.channels.join(', ') : 'Alle'}</div>
                   </div>
                 </div>
-
+                
                 <div>
                   <h3 className="font-medium text-gray-700 mb-2">Statistiken</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 p-3 rounded text-center">
-                      <div className="text-xl font-bold text-blue-600">{showTaskDetails.matchCount || 0}</div>
-                      <div className="text-sm text-blue-700">Treffer gesamt</div>
-                    </div>
-                    <div className="bg-green-50 p-3 rounded text-center">
-                      <div className="text-xl font-bold text-green-600">{showTaskDetails.timerCount || 0}</div>
-                      <div className="text-sm text-green-700">Timer erstellt</div>
-                    </div>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
+                    <div><strong>Treffer gefunden:</strong> {showTaskDetails.matchCount || 0}</div>
+                    <div><strong>Timer erstellt:</strong> {showTaskDetails.timerCount || 0}</div>
+                    <div><strong>Erstellt am:</strong> {formatters.formatDate(showTaskDetails.createdAt)}</div>
+                    <div><strong>Letzte Ausführung:</strong> {showTaskDetails.lastRun ? formatters.formatDate(showTaskDetails.lastRun) : 'Nie'}</div>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowTaskDetails(null)}
-                  className="btn btn-outline"
-                >
-                  Schließen
-                </button>
               </div>
             </div>
           </div>
