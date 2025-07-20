@@ -73,14 +73,14 @@ export const apiService = {
     }
   },
 
-  async getProgramDetails(broadcastId) {
-    try {
-      const response = await api.get(`/epg/program/${broadcastId}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to load program details: ${error.message}`);
-    }
-  },
+//   async getProgramDetails(broadcastId) {
+//     try {
+//       const response = await api.get(`/epg/program/${broadcastId}`);
+//       return response.data;
+//     } catch (error) {
+//       throw new Error(`Failed to load program details: ${error.message}`);
+//     }
+//   },
 
   async searchEPG(searchParams) {
     try {

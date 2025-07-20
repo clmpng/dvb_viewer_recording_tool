@@ -32,7 +32,8 @@ function EPGView({ channels, onError }) {
     selectedChannels: [],
     selectedGenres: [],
     selectedDay: 0,
-    timeday: 'ganztags'
+    timeday: 'ganztags',
+    showCurrentOnly: false
   });
   
   // UI state
@@ -63,7 +64,7 @@ function EPGView({ channels, onError }) {
   // Apply filters when data or filter criteria change
   useEffect(() => {
     applyFilters();
-  }, [epgData, filters.search, filters.selectedGenres]);
+  }, [epgData, filters.search, filters.selectedGenres, filters.showCurrentOnly]);
 
   /**
    * Load EPG data for selected channels and day
@@ -107,7 +108,7 @@ function EPGView({ channels, onError }) {
   /**
    * Apply current filters to EPG data
    */
-  const applyFilters = () => {
+const applyFilters = () => {
     let filtered = [...epgData];
 
     // Apply search filter
@@ -134,6 +135,16 @@ function EPGView({ channels, onError }) {
       })).filter(channelData => channelData.programs.length > 0);
     }
 
+    // Apply "current only" filter
+    if (filters.showCurrentOnly) {
+      filtered = filtered.map(channelData => ({
+        ...channelData,
+        programs: channelData.programs.filter(program =>
+          isProgramCurrent(program, channelData.day)
+        )
+      })).filter(channelData => channelData.programs.length > 0);
+    }
+
     setFilteredData(filtered);
   };
 
@@ -141,7 +152,16 @@ function EPGView({ channels, onError }) {
    * Handle filter changes
    */
   const handleFilterChange = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters(prev => {
+      const updated = { ...prev, ...newFilters };
+      
+      // Reset showCurrentOnly wenn andere Filter gesetzt werden
+      if (newFilters.selectedChannels || newFilters.selectedGenres || newFilters.search) {
+        updated.showCurrentOnly = false;
+      }
+      
+      return updated;
+    });
   };
 
   /**
@@ -213,16 +233,22 @@ function EPGView({ channels, onError }) {
   /**
    * Quick filter presets
    */
-  const applyQuickFilter = (preset) => {
+const applyQuickFilter = (preset) => {
     switch (preset) {
       case 'main':
         const mainChannels = Object.entries(availableChannels)
           .filter(([_, channel]) => 
-            channel.category === 'öffentlich-rechtlich'
+            channel.category === 'öffentlich-rechtlich' || 
+            channel.category === 'privat'
           )
           .map(([id]) => id)
-          .slice(0, 6);
-        handleFilterChange({ selectedChannels: mainChannels });
+          .slice(0, 8);
+        handleFilterChange({ 
+          selectedChannels: mainChannels,
+          selectedDay: 0,
+          selectedGenres: [],
+          search: ''
+        });
         break;
       case 'news':
         const newsChannels = Object.entries(availableChannels)
@@ -230,18 +256,34 @@ function EPGView({ channels, onError }) {
             channel.category === 'nachrichten'
           )
           .map(([id]) => id);
-        handleFilterChange({ selectedChannels: newsChannels });
+        handleFilterChange({ 
+          selectedChannels: newsChannels,
+          selectedDay: 0,
+          selectedGenres: [],
+          search: ''
+        });
         break;
-      case 'now':
-        handleFilterChange({ timeday: 'ganztags' });
+      case 'current':
+        // Filter für aktuell laufende Sendungen
+        handleFilterChange({ 
+          selectedDay: 0, // Nur heute
+          selectedGenres: [],
+          search: '',
+          showCurrentOnly: true
+        });
         break;
       case 'movie':
-        handleFilterChange({ selectedGenres: ['Spielfilm', 'Film'] });
+        handleFilterChange({ 
+          selectedGenres: ['Spielfilm', 'Film', 'Filmkomödie', 'Thriller'],
+          selectedDay: 0,
+          search: ''
+        });
         break;
       default:
         break;
     }
   };
+
 
   /**
    * Render program card
@@ -430,27 +472,38 @@ function EPGView({ channels, onError }) {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               {/* Quick Filters */}
-              <div className="flex flex-wrap gap-2">
+             <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => applyQuickFilter('main')}
                   className="btn btn-outline btn-sm"
+                  title="Öffentlich-rechtliche Hauptsender"
                 >
                   <Star size={14} />
-                  <span className="hidden sm:inline">Hauptsender</span>
+                  <span className="text-xs">Hauptsender</span>
                 </button>
                 <button
                   onClick={() => applyQuickFilter('news')}
                   className="btn btn-outline btn-sm"
+                  title="Nachrichtensender"
                 >
                   <Zap size={14} />
-                  <span className="hidden sm:inline">Nachrichten</span>
+                  <span className="text-xs">Nachrichten</span>
+                </button>
+                <button
+                  onClick={() => applyQuickFilter('current')}
+                  className="btn btn-outline btn-sm"
+                  title="Aktuell laufende Sendungen"
+                >
+                  <Clock size={14} />
+                  <span className="text-xs">Läuft jetzt</span>
                 </button>
                 <button
                   onClick={() => applyQuickFilter('movie')}
                   className="btn btn-outline btn-sm"
+                  title="Filme und Spielfilme"
                 >
                   <Play size={14} />
-                  <span className="hidden sm:inline">Filme</span>
+                  <span className="text-xs">Filme</span>
                 </button>
               </div>
 
@@ -697,16 +750,17 @@ function EPGView({ channels, onError }) {
       )}
 
       {/* Modals */}
-      {showProgramModal && selectedProgram && (
-        <ProgramModal
-          program={selectedProgram}
-          onClose={() => setShowProgramModal(false)}
-          onCreateTimer={() => {
-            setShowProgramModal(false);
-            handleCreateTimer(selectedProgram);
-          }}
-        />
-      )}
+    {showProgramModal && selectedProgram && (
+            <ProgramModal
+            program={selectedProgram}
+            channels={availableChannels}
+            onClose={() => setShowProgramModal(false)}
+            onCreateTimer={(program) => {
+                setShowProgramModal(false);
+                handleCreateTimer(program);
+            }}
+            />
+        )}
 
       {showTimerModal && timerProgram && (
         <TimerModal

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { 
   X, 
   Clock, 
@@ -8,44 +8,14 @@ import {
   Info,
   Eye
 } from 'lucide-react';
-import { apiService, formatters } from '../services/api';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorAlert from './ErrorAlert';
+import { formatters } from '../services/api';
 
 function ProgramModal({ 
   program, 
+  channels,
   onClose, 
   onCreateTimer 
 }) {
-  const [programDetails, setProgramDetails] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Load detailed program information
-  useEffect(() => {
-    if (program?.id) {
-      loadProgramDetails();
-    }
-  }, [program?.id]);
-
-  /**
-   * Load detailed program information from API
-   */
-  const loadProgramDetails = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log(`Loading details for program ${program.id}`);
-      const response = await apiService.getProgramDetails(program.id);
-      setProgramDetails(response.data);
-    } catch (err) {
-      console.error('Failed to load program details:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   /**
    * Handle click outside modal to close
@@ -90,31 +60,32 @@ function ProgramModal({
   /**
    * Format program duration
    */
-  const formatDuration = (details) => {
-    if (details.startTime && details.endTime) {
-      const start = new Date(`1970-01-01T${details.startTime}`);
-      const end = new Date(`1970-01-01T${details.endTime}`);
-      const diffMs = end - start;
-      const minutes = Math.floor(diffMs / 60000);
-      return `${Math.floor(minutes / 60)}:${(minutes % 60).toString().padStart(2, '0')} h`;
+  const formatDuration = (program) => {
+    if (program.time && program.endTime) {
+      const [startHours, startMinutes] = program.time.split(':').map(Number);
+      const [endHours, endMinutes] = program.endTime.split(':').map(Number);
+      
+      const startTotalMinutes = startHours * 60 + startMinutes;
+      let endTotalMinutes = endHours * 60 + endMinutes;
+      
+      // Handle programs that end next day
+      if (endTotalMinutes < startTotalMinutes) {
+        endTotalMinutes += 24 * 60;
+      }
+      
+      const durationMinutes = endTotalMinutes - startTotalMinutes;
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = durationMinutes % 60;
+      
+      return hours > 0 ? `${hours}:${minutes.toString().padStart(2, '0')} h` : `${minutes} min`;
     }
     return null;
   };
 
-  /**
-   * Extract format information
-   */
-  const extractFormats = (details) => {
-    const formats = [];
-    if (details.additionalInfo) {
-      const info = details.additionalInfo.toLowerCase();
-      if (info.includes('hd') || info.includes('720p') || info.includes('1080')) formats.push('HD');
-      if (info.includes('stereo')) formats.push('Stereo');
-      if (info.includes('dolby')) formats.push('Dolby');
-      if (info.includes('16:9')) formats.push('16:9');
-    }
-    return formats;
-  };
+  if (!program) return null;
+
+  const channel = channels?.[program.channelId];
+  const duration = formatDuration(program);
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -133,6 +104,11 @@ function ProgramModal({
                     - {program.endTime}
                   </span>
                 )}
+                {duration && (
+                  <span className="text-sm text-gray-500">
+                    ({duration})
+                  </span>
+                )}
               </div>
               
               <h2 className="text-xl font-bold text-gray-900 mb-2">
@@ -144,10 +120,10 @@ function ProgramModal({
                   {program.genre}
                 </span>
                 
-                {program.channelId && (
+                {channel && (
                   <span className="badge badge-gray">
                     <Tv size={12} className="mr-1" />
-                    Channel {program.channelId}
+                    {channel.displayName || channel.name}
                   </span>
                 )}
                 
@@ -172,92 +148,102 @@ function ProgramModal({
 
         {/* Content */}
         <div className="card-body">
-          {error && (
-            <ErrorAlert
-              message={error}
-              onClose={() => setError(null)}
-              className="mb-4"
-              compact
-            />
-          )}
-
-          {isLoading ? (
-            <div className="py-8">
-              <LoadingSpinner 
-                size="lg" 
-                text="Lade Programm-Details..." 
-              />
-            </div>
-          ) : programDetails ? (
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Sendetermin
-                  </h3>
-                  <div className="text-sm space-y-1">
-                    <div>{programDetails.date} um {programDetails.time} Uhr</div>
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  <Clock size={16} className="inline mr-2" />
+                  Sendetermin
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                  <div className="font-medium">
+                    {formatters.getDayName(program.day)}
+                    {program.day > 0 && ` (${formatters.getDateForDay(program.day)})`}
+                  </div>
+                  <div className="text-gray-600">
+                    {program.time} - {program.endTime || 'Ende unbekannt'} Uhr
+                  </div>
+                  {duration && (
                     <div className="text-gray-600">
-                      Sender: {programDetails.channel}
+                      Dauer: {duration}
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Format
-                  </h3>
-                  <div className="flex flex-wrap gap-1">
-                    {formatDuration(programDetails) && (
-                      <span className="badge badge-blue">
-                        {formatDuration(programDetails)}
-                      </span>
-                    )}
-                    {extractFormats(programDetails).map(format => (
-                      <span key={format} className="badge badge-gray">
-                        {format}
-                      </span>
-                    ))}
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Description */}
-              {programDetails.description && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Info size={16} />
-                    Beschreibung
-                  </h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {programDetails.description}
-                    </p>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  <Tv size={16} className="inline mr-2" />
+                  Sender & Kategorie
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                  <div className="font-medium">
+                    {channel?.displayName || channel?.name || `Channel ${program.channelId}`}
+                  </div>
+                  {channel?.category && (
+                    <div className="text-gray-600">
+                      Kategorie: {channel.category}
+                    </div>
+                  )}
+                  <div className="flex gap-1 mt-2">
+                    <span className={`badge ${getGenreBadgeClass(program.genre)} text-xs`}>
+                      {program.genre}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Additional Information */}
-              {programDetails.additionalInfo && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Technische Details
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {programDetails.additionalInfo}
+            {/* Program Description */}
+            {program.description ? (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Info size={16} />
+                  Beschreibung
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {program.description}
                   </p>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Eye size={48} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600">
-                Detaillierte Informationen konnten nicht geladen werden.
-              </p>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Info size={16} />
+                  Programmhinweise
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 italic">
+                    Für diese Sendung sind leider keine weiteren Details verfügbar.
+                  </p>
+                  <div className="mt-3 text-xs text-gray-500">
+                    <div><strong>Titel:</strong> {program.title}</div>
+                    <div><strong>Genre:</strong> {program.genre}</div>
+                    <div><strong>Uhrzeit:</strong> {program.time} - {program.endTime || 'unbekannt'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Technical Information */}
+            {channel && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Technische Details
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
+                  <div><strong>Channel ID:</strong> {program.channelId}</div>
+                  <div><strong>Program ID:</strong> {program.id}</div>
+                  {channel.frequency && (
+                    <div><strong>Frequenz:</strong> {channel.frequency}</div>
+                  )}
+                  <div><strong>DVB Viewer:</strong> {channel.note?.includes('Nicht in DVB Viewer verfügbar') ? 'Nicht verfügbar' : 'Verfügbar'}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -270,15 +256,13 @@ function ProgramModal({
               Schließen
             </button>
             
-            {programDetails && (
-              <button
-                onClick={onCreateTimer}
-                className="btn btn-primary"
-              >
-                <Play size={16} />
-                Timer erstellen
-              </button>
-            )}
+            <button
+              onClick={() => onCreateTimer(program)}
+              className="btn btn-primary"
+            >
+              <Play size={16} />
+              Timer erstellen
+            </button>
           </div>
         </div>
       </div>
