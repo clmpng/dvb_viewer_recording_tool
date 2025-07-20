@@ -1,0 +1,13 @@
+{
+  "dvbViewer": {
+    "host": "localhost:8089",
+    "defaultFolder": "Auto",
+    "defaultPriority": 50,
+    "defaultPreBuffer": 5,
+    "defaultPostBuffer": 10
+  },
+  "epg": {
+    "cacheHours": 6,
+    "daysAhead": 7
+  }
+}

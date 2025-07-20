@@ -1,0 +1,177 @@
+{
+  "71": {
+    "name": "Das Erste",
+    "dvbId": "4135436344991125545",
+    "category": "öffentlich-rechtlich"
+  },
+  "37": {
+    "name": "ZDF",
+    "dvbId": "4135697148290266197",
+    "category": "öffentlich-rechtlich"
+  },
+  "38": {
+    "name": "RTL",
+    "dvbId": "4135000000000000001",
+    "category": "privat"
+  },
+  "39": {
+    "name": "Sat.1",
+    "dvbId": "4135000000000000002",
+    "category": "privat"
+  },
+  "40": {
+    "name": "ProSieben",
+    "dvbId": "4135000000000000003",
+    "category": "privat"
+  },
+  "41": {
+    "name": "RTL Zwei",
+    "dvbId": "4135000000000000004",
+    "category": "privat"
+  },
+  "44": {
+    "name": "Kabel Eins",
+    "dvbId": "4135000000000000005",
+    "category": "privat"
+  },
+  "42": {
+    "name": "VOX",
+    "dvbId": "4135000000000000006",
+    "category": "privat"
+  },
+  "56": {
+    "name": "3sat",
+    "dvbId": "4135614117982499715",
+    "category": "öffentlich-rechtlich"
+  },
+  "58": {
+    "name": "Arte",
+    "dvbId": "4135460297644191118",
+    "category": "öffentlich-rechtlich"
+  },
+  "43": {
+    "name": "Super RTL",
+    "dvbId": "4135000000000000007",
+    "category": "privat"
+  },
+  "57": {
+    "name": "KiKA",
+    "dvbId": "4135486677712837638",
+    "category": "öffentlich-rechtlich"
+  },
+  "46": {
+    "name": "WDR",
+    "dvbId": "4135465855711400607",
+    "category": "öffentlich-rechtlich"
+  },
+  "47": {
+    "name": "NDR",
+    "dvbId": "4135559958444885535",
+    "category": "öffentlich-rechtlich"
+  },
+  "48": {
+    "name": "MDR",
+    "dvbId": "4135568526904594194",
+    "category": "öffentlich-rechtlich"
+  },
+  "50": {
+    "name": "SWR",
+    "dvbId": "4135462771924891720",
+    "category": "öffentlich-rechtlich"
+  },
+  "49": {
+    "name": "HR",
+    "dvbId": "4135462720385292522",
+    "category": "öffentlich-rechtlich"
+  },
+  "52": {
+    "name": "RBB",
+    "dvbId": "4135506696076454450",
+    "category": "öffentlich-rechtlich"
+  },
+  "51": {
+    "name": "BR",
+    "dvbId": "4135691478933407371",
+    "category": "öffentlich-rechtlich"
+  },
+  "104": {
+    "name": "ARD alpha",
+    "dvbId": "4135497591224764644",
+    "category": "öffentlich-rechtlich"
+  },
+  "66": {
+    "name": "n-tv",
+    "dvbId": "4135000000000000008",
+    "category": "nachrichten"
+  },
+  "175": {
+    "name": "WELT",
+    "dvbId": "4135640355429291218",
+    "category": "nachrichten"
+  },
+  "194": {
+    "name": "Phoenix",
+    "dvbId": "4135528021068034502",
+    "category": "nachrichten"
+  },
+  "100": {
+    "name": "tagesschau24",
+    "dvbId": "4135689154877096917",
+    "category": "nachrichten"
+  },
+  "659": {
+    "name": "ZDFneo",
+    "dvbId": "4135711454826294153",
+    "category": "öffentlich-rechtlich"
+  },
+  "276": {
+    "name": "ZDFinfo",
+    "dvbId": "4135515114691354493",
+    "category": "öffentlich-rechtlich"
+  },
+  "146": {
+    "name": "One",
+    "dvbId": "4135466628805546056",
+    "category": "öffentlich-rechtlich"
+  },
+  "65": {
+    "name": "Eurosport 1",
+    "dvbId": "4135000000000000009",
+    "category": "sport"
+  },
+  "64": {
+    "name": "SPORT1",
+    "dvbId": "4135537327766107577",
+    "category": "sport"
+  },
+  "139": {
+    "name": "Disney Channel",
+    "dvbId": "4135000000000000010",
+    "category": "kinder"
+  },
+  "277": {
+    "name": "Tele 5",
+    "dvbId": "4135000000000000011",
+    "category": "privat"
+  },
+  "54": {
+    "name": "ORF 1",
+    "dvbId": "4135000000000000012",
+    "category": "österreich"
+  },
+  "55": {
+    "name": "ORF 2",
+    "dvbId": "4135000000000000013",
+    "category": "österreich"
+  },
+  "59": {
+    "name": "SRF 1",
+    "dvbId": "4135000000000000014",
+    "category": "schweiz"
+  },
+  "60": {
+    "name": "SRF zwei",
+    "dvbId": "4135000000000000015",
+    "category": "schweiz"
+  }
+}
