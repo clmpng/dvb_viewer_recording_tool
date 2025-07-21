@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Filter, 
@@ -25,6 +25,7 @@ function EPGView({ channels, onError }) {
   const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -42,7 +43,9 @@ function EPGView({ channels, onError }) {
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerProgram, setTimerProgram] = useState(null);
-  const [viewMode, setViewMode] = useState('channel'); // 'channel' or 'list'
+
+  // Refs for scrolling
+  const laneRefs = useRef([]);
 
   // Get only DVB Viewer compatible channels
   const getAvailableChannels = () => {
@@ -56,6 +59,14 @@ function EPGView({ channels, onError }) {
 
   const availableChannels = getAvailableChannels();
 
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Load initial EPG data
   useEffect(() => {
     loadEPGData();
@@ -65,6 +76,13 @@ function EPGView({ channels, onError }) {
   useEffect(() => {
     applyFilters();
   }, [epgData, filters.search, filters.selectedGenres, filters.showCurrentOnly]);
+
+  // Scroll to current time when data loads
+  useEffect(() => {
+    if (filteredData.length > 0 && filters.selectedDay === 0) {
+      scrollToCurrentTime();
+    }
+  }, [filteredData]);
 
   /**
    * Load EPG data for selected channels and day
@@ -76,7 +94,7 @@ function EPGView({ channels, onError }) {
     try {
       const channelsToLoad = filters.selectedChannels.length > 0 
         ? filters.selectedChannels.filter(id => availableChannels[id])
-        : Object.keys(availableChannels).slice(0, 8); // Load first 8 available channels
+        : Object.keys(availableChannels); // Load ALL available channels
 
       console.log(`Loading EPG for ${channelsToLoad.length} channels, day ${filters.selectedDay}`);
 
@@ -108,7 +126,7 @@ function EPGView({ channels, onError }) {
   /**
    * Apply current filters to EPG data
    */
-const applyFilters = () => {
+  const applyFilters = () => {
     let filtered = [...epgData];
 
     // Apply search filter
@@ -155,7 +173,7 @@ const applyFilters = () => {
     setFilters(prev => {
       const updated = { ...prev, ...newFilters };
       
-      // Reset showCurrentOnly wenn andere Filter gesetzt werden
+      // Reset showCurrentOnly when other filters are set
       if (newFilters.selectedChannels || newFilters.selectedGenres || newFilters.search) {
         updated.showCurrentOnly = false;
       }
@@ -227,22 +245,60 @@ const applyFilters = () => {
     const [hours, minutes] = program.time.split(':').map(Number);
     const programTime = hours * 60 + minutes;
     
-    return Math.abs(currentTime - programTime) < 180 && currentTime >= programTime;
+    return Math.abs(currentTime - programTime) < 90 && currentTime >= programTime;
+  };
+
+  /**
+   * Scroll lane to current time
+   */
+  const scrollToCurrentTime = () => {
+    if (filters.selectedDay !== 0) return;
+
+    const now = new Date();
+    const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+
+    laneRefs.current.forEach((laneRef, index) => {
+      if (!laneRef) return;
+
+      const channelData = filteredData[index];
+      if (!channelData) return;
+
+      // Find the program closest to current time
+      let closestIndex = 0;
+      let closestDiff = Infinity;
+
+      channelData.programs.forEach((program, progIndex) => {
+        const [hours, minutes] = program.time.split(':').map(Number);
+        const programTime = hours * 60 + minutes;
+        const diff = Math.abs(currentTimeMinutes - programTime);
+
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestIndex = progIndex;
+        }
+      });
+
+      // Scroll to the closest program
+      const programCard = laneRef.children[closestIndex];
+      if (programCard) {
+        laneRef.scrollLeft = Math.max(0, programCard.offsetLeft - laneRef.offsetWidth / 3);
+      }
+    });
   };
 
   /**
    * Quick filter presets
    */
-const applyQuickFilter = (preset) => {
+  const applyQuickFilter = (preset) => {
     switch (preset) {
       case 'main':
+        // Alle öffentlich-rechtlichen und Nachrichten-Sender (die hauptsächlich verfügbaren)
         const mainChannels = Object.entries(availableChannels)
           .filter(([_, channel]) => 
             channel.category === 'öffentlich-rechtlich' || 
-            channel.category === 'privat'
+            channel.category === 'nachrichten'
           )
-          .map(([id]) => id)
-          .slice(0, 8);
+          .map(([id]) => id);
         handleFilterChange({ 
           selectedChannels: mainChannels,
           selectedDay: 0,
@@ -250,32 +306,20 @@ const applyQuickFilter = (preset) => {
           search: ''
         });
         break;
-      case 'news':
-        const newsChannels = Object.entries(availableChannels)
-          .filter(([_, channel]) => 
-            channel.category === 'nachrichten'
-          )
-          .map(([id]) => id);
-        handleFilterChange({ 
-          selectedChannels: newsChannels,
-          selectedDay: 0,
-          selectedGenres: [],
-          search: ''
-        });
-        break;
       case 'current':
-        // Filter für aktuell laufende Sendungen
         handleFilterChange({ 
-          selectedDay: 0, // Nur heute
+          selectedDay: 0,
           selectedGenres: [],
           search: '',
           showCurrentOnly: true
         });
         break;
-      case 'movie':
+      case 'all':
+        // Alle verfügbaren Sender
         handleFilterChange({ 
-          selectedGenres: ['Spielfilm', 'Film', 'Filmkomödie', 'Thriller'],
+          selectedChannels: [],
           selectedDay: 0,
+          selectedGenres: [],
           search: ''
         });
         break;
@@ -284,149 +328,98 @@ const applyQuickFilter = (preset) => {
     }
   };
 
-
   /**
    * Render program card
    */
-  const ProgramCard = ({ program, channelData, compact = false }) => {
+  const ProgramCard = ({ program, channelData }) => {
     const isCurrent = isProgramCurrent(program, channelData.day);
     const channel = availableChannels[program.channelId];
     
     return (
       <div 
-        className={`epg-program group ${isCurrent ? 'current' : ''} ${compact ? 'compact' : ''}`}
+        className={`epg-program-card ${isCurrent ? 'current' : ''}`}
         onClick={() => handleProgramClick(program)}
       >
-        {/* Current indicator */}
-        {isCurrent && (
-          <div className="absolute top-3 right-3">
-            <span className="badge badge-green text-xs flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              LIVE
-            </span>
-          </div>
-        )}
-
-        {/* Time and Channel */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className={`epg-time ${isCurrent ? 'text-green-600' : ''}`}>
-              {program.time}
-            </span>
-            {program.endTime && (
-              <span className="text-xs text-gray-500">
-                - {program.endTime}
-              </span>
-            )}
-          </div>
-          
-          {compact && channel && (
-            <span className="text-xs text-gray-500 truncate max-w-20">
-              {channel.name.replace(' HD', '')}
+        {/* Time */}
+        <div className={`epg-program-time ${isCurrent ? 'current' : ''}`}>
+          {program.time}
+          {program.endTime && (
+            <span className="text-gray-500 text-xs ml-1">
+              - {program.endTime}
             </span>
           )}
         </div>
-
+        
         {/* Title */}
-        <h4 className="epg-title">
-          {formatters.truncateText(program.title, compact ? 40 : 60)}
+        <h4 className="epg-program-title">
+          {formatters.truncateText(program.title, 50)}
         </h4>
 
-        {/* Genre and Actions */}
-        <div className="flex items-center justify-between mt-3">
-          <span className={`badge ${formatters.getGenreBadgeColor(program.genre) === 'blue' ? 'badge-blue' : 
-                          formatters.getGenreBadgeColor(program.genre) === 'green' ? 'badge-green' :
-                          formatters.getGenreBadgeColor(program.genre) === 'yellow' ? 'badge-yellow' :
-                          formatters.getGenreBadgeColor(program.genre) === 'red' ? 'badge-red' : 'badge-gray'}`}>
-            {program.genre}
-          </span>
-          
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleProgramClick(program);
-              }}
-              className="btn btn-outline btn-sm"
-              title="Details"
-            >
-              <Eye size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCreateTimer(program);
-              }}
-              className="btn btn-primary btn-sm"
-              title="Aufnahme"
-            >
-              <Play size={14} />
-            </button>
-          </div>
+        {/* Genre */}
+        <div className="epg-program-genre">
+          {program.genre}
+        </div>
+
+        {/* Actions */}
+        <div className="epg-program-actions">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleProgramClick(program);
+            }}
+            className="btn btn-outline btn-sm"
+            title="Details"
+          >
+            <Eye size={12} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCreateTimer(program);
+            }}
+            className="btn btn-primary btn-sm"
+            title="Aufnahme"
+          >
+            <Play size={12} />
+          </button>
         </div>
       </div>
     );
   };
 
   /**
-   * Render channel section
+   * Render channel lane
    */
-  const ChannelSection = ({ channelData }) => {
+  const ChannelLane = ({ channelData, index }) => {
     const channel = availableChannels[channelData.channelId];
     const channelName = channelData.channelName || channel?.name || `Channel ${channelData.channelId}`;
     
     return (
-      <div className="channel-section">
-        <div className="channel-header">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Tv size={24} />
-              <div>
-                <h3 className="text-xl font-bold">
-                  {channelName}
-                </h3>
-                <p className="text-blue-100 opacity-90">
-                  {channelData.programs.length} Sendungen • {formatters.getDayName(channelData.day)}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {channel?.category && (
-                <span className={`badge bg-white/20 text-white border border-white/30`}>
-                  {channel.category}
-                </span>
-              )}
-              <button
-                onClick={() => applyQuickFilter('main')}
-                className="btn btn-outline text-white border-white/30 btn-sm"
-                title="Alle Programme anzeigen"
-              >
-                <Star size={14} />
-              </button>
-            </div>
+      <div className="epg-lane">
+        {/* Channel Info */}
+        <div className="epg-lane-channel">
+          <div className="epg-lane-channel-name">
+            {channelName.replace(' HD', '')}
           </div>
-        </div>
-
-        <div className="channel-programs">
-          {channelData.programs.length > 0 ? (
-            <div className="epg-grid">
-              {channelData.programs.map((program) => (
-                <ProgramCard
-                  key={program.id}
-                  program={program}
-                  channelData={channelData}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Clock size={48} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600">
-                Keine Sendungen für die ausgewählten Filter gefunden.
-              </p>
+          {channel?.category && (
+            <div className="epg-lane-channel-category">
+              {channel.category}
             </div>
           )}
+        </div>
+
+        {/* Programs */}
+        <div 
+          className="epg-lane-programs"
+          ref={el => laneRefs.current[index] = el}
+        >
+          {channelData.programs.map((program, progIndex) => (
+            <ProgramCard
+              key={`${program.id}-${progIndex}`}
+              program={program}
+              channelData={channelData}
+            />
+          ))}
         </div>
       </div>
     );
@@ -434,341 +427,190 @@ const applyQuickFilter = (preset) => {
 
   const stats = getStats();
 
+  if (isLoading && epgData.length === 0) {
+    return <LoadingSpinner message="EPG wird geladen..." />;
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header with Statistics */}
+      {/* Header and Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-number text-blue-600">{stats.totalChannels}</div>
-          <div className="stat-label">Aktive Sender</div>
+          <div className="stat-number">{stats.totalChannels}</div>
+          <div className="stat-label">Sender</div>
         </div>
         <div className="stat-card">
-          <div className="stat-number text-green-600">{stats.totalPrograms}</div>
-          <div className="stat-label">Sendungen gesamt</div>
+          <div className="stat-number">{stats.totalPrograms}</div>
+          <div className="stat-label">Programme</div>
         </div>
         <div className="stat-card">
-          <div className="stat-number text-purple-600">{stats.currentPrograms}</div>
-          <div className="stat-label">Läuft jetzt</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number text-yellow-600">{Object.keys(availableChannels).length}</div>
-          <div className="stat-label">DVB Sender</div>
+          <div className="stat-number">{stats.currentPrograms}</div>
+          <div className="stat-label">Aktuell</div>
         </div>
       </div>
 
-      {/* Main Header */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Filter Panel */}
+      <div className="filter-panel">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Filter & Schnellauswahl</h3>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="btn btn-outline btn-sm"
+          >
+            <Filter size={16} />
+            Filter
+            <ChevronDown size={16} className={showFilters ? 'rotate-180' : ''} />
+          </button>
+        </div>
+
+        {/* Quick Filters */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => applyQuickFilter('all')}
+            className="btn btn-outline btn-sm"
+          >
+            <Tv size={14} />
+            Alle Sender
+          </button>
+          <button
+            onClick={() => applyQuickFilter('main')}
+            className="btn btn-outline btn-sm"
+          >
+            <Star size={14} />
+            Öff.-Recht. + News
+          </button>
+          <button
+            onClick={() => applyQuickFilter('current')}
+            className="btn btn-outline btn-sm"
+          >
+            <Zap size={14} />
+            Läuft jetzt
+          </button>
+          <button
+            onClick={() => handleFilterChange({ selectedDay: 0, search: '', selectedGenres: [], selectedChannels: [] })}
+            className="btn btn-outline btn-sm"
+          >
+            <RefreshCw size={14} />
+            Zurücksetzen
+          </button>
+        </div>
+
+        {/* Detailed Filters */}
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Tv size={32} className="text-blue-600" />
-                TV-Programm
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {formatters.getDateForDay(filters.selectedDay)} • {filters.timeday === 'ganztags' ? 'Ganztags' : filters.timeday}
-              </p>
+              <label className="form-label">Suche</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Titel oder Genre..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
+              />
             </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              {/* Quick Filters */}
-             <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => applyQuickFilter('main')}
-                  className="btn btn-outline btn-sm"
-                  title="Öffentlich-rechtliche Hauptsender"
-                >
-                  <Star size={14} />
-                  <span className="text-xs">Hauptsender</span>
-                </button>
-                <button
-                  onClick={() => applyQuickFilter('news')}
-                  className="btn btn-outline btn-sm"
-                  title="Nachrichtensender"
-                >
-                  <Zap size={14} />
-                  <span className="text-xs">Nachrichten</span>
-                </button>
-                <button
-                  onClick={() => applyQuickFilter('current')}
-                  className="btn btn-outline btn-sm"
-                  title="Aktuell laufende Sendungen"
-                >
-                  <Clock size={14} />
-                  <span className="text-xs">Läuft jetzt</span>
-                </button>
-                <button
-                  onClick={() => applyQuickFilter('movie')}
-                  className="btn btn-outline btn-sm"
-                  title="Filme und Spielfilme"
-                >
-                  <Play size={14} />
-                  <span className="text-xs">Filme</span>
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`btn btn-outline ${showFilters ? 'bg-blue-50 border-blue-200' : ''}`}
-                >
-                  <Filter size={16} />
-                  <span className="hidden sm:inline">Filter</span>
-                  <ChevronDown size={14} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-                </button>
-
-                <button
-                  onClick={loadEPGData}
-                  disabled={isLoading}
-                  className="btn btn-primary"
-                >
-                  <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
-                  <span className="hidden sm:inline">Aktualisieren</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  className="form-input pl-10"
-                  placeholder="Sendung suchen... (z.B. Tatort, Nachrichten, Spielfilm)"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange({ search: e.target.value })}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
+            <div>
+              <label className="form-label">Tag</label>
               <select
-                className="form-select min-w-32"
+                className="form-select"
                 value={filters.selectedDay}
                 onChange={(e) => handleFilterChange({ selectedDay: parseInt(e.target.value) })}
               >
-                {[0,1,2,3,4,5,6,7].map(day => (
-                  <option key={day} value={day}>
-                    {formatters.getDayName(day)}
-                  </option>
-                ))}
+                <option value={0}>Heute</option>
+                <option value={1}>Morgen</option>
+                <option value={2}>Übermorgen</option>
               </select>
-
+            </div>
+            <div>
+              <label className="form-label">Tageszeit</label>
               <select
-                className="form-select min-w-32"
+                className="form-select"
                 value={filters.timeday}
                 onChange={(e) => handleFilterChange({ timeday: e.target.value })}
               >
                 <option value="ganztags">Ganztags</option>
-                <option value="morgens">Morgens</option>
-                <option value="mittags">Mittags</option>
-                <option value="nachmittags">Nachmittags</option>
-                <option value="abends">Abends</option>
-                <option value="spät">Spätnacht</option>
+                <option value="vormittag">Vormittag</option>
+                <option value="nachmittag">Nachmittag</option>
+                <option value="abend">Abend</option>
               </select>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* EPG Lanes */}
+      {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
+      
+      <div className="epg-container">
+        {/* Time Header */}
+        <div className="epg-time-header">
+          <div className="epg-current-time">
+            <Clock size={16} />
+            {filters.selectedDay === 0 ? 
+              `Aktuelle Zeit: ${formatters.formatTime(currentTime)}` :
+              `${formatters.getDayName(filters.selectedDay)} • ${filters.timeday}`
+            }
+          </div>
+          <button
+            onClick={scrollToCurrentTime}
+            className="btn btn-outline btn-sm"
+            disabled={filters.selectedDay !== 0}
+          >
+            Jetzt anzeigen
+          </button>
+        </div>
+
+        {/* Lanes */}
+        <div className="epg-lanes">
+          {filteredData.length > 0 ? (
+            filteredData.map((channelData, index) => (
+              <ChannelLane
+                key={`${channelData.channelId}-${channelData.day}`}
+                channelData={channelData}
+                index={index}
+              />
+            ))
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              {isLoading ? (
+                <LoadingCard />
+              ) : (
+                <div>
+                  <Tv size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p>Keine Programme gefunden.</p>
+                  <p className="text-sm mt-2">
+                    Überprüfen Sie Ihre Filter oder versuchen Sie es mit anderen Suchkriterien.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Extended Filters */}
-      {showFilters && (
-        <div className="filter-panel">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Settings size={20} />
-            Erweiterte Filter
-          </h3>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Channel Selection */}
-            <div>
-              <label className="form-label mb-3">
-                Sender auswählen ({filters.selectedChannels.length} von {Object.keys(availableChannels).length})
-              </label>
-              
-              <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
-                {Object.entries(availableChannels).map(([channelId, channel]) => {
-                  const isSelected = filters.selectedChannels.includes(channelId);
-                  
-                  return (
-                    <label
-                      key={channelId}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        isSelected 
-                          ? 'bg-blue-50 border-blue-300 text-blue-700' 
-                          : 'bg-white border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="form-checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          const newChannels = isSelected
-                            ? filters.selectedChannels.filter(id => id !== channelId)
-                            : [...filters.selectedChannels, channelId];
-                          handleFilterChange({ selectedChannels: newChannels });
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium truncate block">
-                          {channel.name}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {channel.category}
-                        </span>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Genre Selection */}
-            <div>
-              <label className="form-label mb-3">
-                Genres ({filters.selectedGenres.length} ausgewählt)
-              </label>
-              
-              <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
-                {getAvailableGenres().map(genre => {
-                  const isSelected = filters.selectedGenres.includes(genre);
-                  
-                  return (
-                    <button
-                      key={genre}
-                      onClick={() => {
-                        const newGenres = isSelected
-                          ? filters.selectedGenres.filter(g => g !== genre)
-                          : [...filters.selectedGenres, genre];
-                        handleFilterChange({ selectedGenres: newGenres });
-                      }}
-                      className={`badge text-sm cursor-pointer transition-all ${
-                        isSelected ? 'badge-blue' : 'badge-gray hover:badge-blue'
-                      }`}
-                    >
-                      {genre}
-                      {isSelected && ' ✓'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={() => handleFilterChange({
-                search: '',
-                selectedChannels: [],
-                selectedGenres: [],
-                selectedDay: 0,
-                timeday: 'ganztags'
-              })}
-              className="btn btn-outline"
-            >
-              Zurücksetzen
-            </button>
-            <button
-              onClick={() => setShowFilters(false)}
-              className="btn btn-primary"
-            >
-              Filter anwenden
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Error Alert */}
-      {error && (
-        <ErrorAlert
-          message={error}
-          onClose={() => setError(null)}
+      {/* Modals */}
+      {showProgramModal && selectedProgram && (
+        <ProgramModal
+          program={selectedProgram}
+          onClose={() => {
+            setShowProgramModal(false);
+            setSelectedProgram(null);
+          }}
+          onCreateTimer={(program) => {
+            setShowProgramModal(false);
+            setSelectedProgram(null);
+            handleCreateTimer(program);
+          }}
         />
       )}
-
-      {/* Main Content */}
-      {isLoading ? (
-        <div className="epg-grid">
-          {[...Array(6)].map((_, index) => (
-            <LoadingCard key={index} text="Lade EPG..." />
-          ))}
-        </div>
-      ) : filteredData.length > 0 ? (
-        <div className="space-y-8">
-          {filteredData.map((channelData) => (
-            <ChannelSection
-              key={`${channelData.channelId}-${channelData.day}`}
-              channelData={channelData}
-            />
-          ))}
-        </div>
-      ) : epgData.length === 0 ? (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <Tv size={64} className="mx-auto text-gray-400 mb-6" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Keine EPG-Daten verfügbar
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Wählen Sie Sender aus oder laden Sie die Daten neu.
-            </p>
-            <button
-              onClick={loadEPGData}
-              className="btn btn-primary"
-            >
-              <RefreshCw size={16} />
-              EPG laden
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <Search size={64} className="mx-auto text-gray-400 mb-6" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Keine Sendungen gefunden
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Versuchen Sie andere Suchbegriffe oder Filter.
-            </p>
-            <button
-              onClick={() => handleFilterChange({ search: '', selectedGenres: [] })}
-              className="btn btn-outline"
-            >
-              Filter zurücksetzen
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modals */}
-    {showProgramModal && selectedProgram && (
-            <ProgramModal
-            program={selectedProgram}
-            channels={availableChannels}
-            onClose={() => setShowProgramModal(false)}
-            onCreateTimer={(program) => {
-                setShowProgramModal(false);
-                handleCreateTimer(program);
-            }}
-            />
-        )}
 
       {showTimerModal && timerProgram && (
         <TimerModal
           program={timerProgram}
-          channels={availableChannels}
-          onClose={() => setShowTimerModal(false)}
+          onClose={() => {
+            setShowTimerModal(false);
+            setTimerProgram(null);
+          }}
           onSuccess={handleTimerCreated}
-          onError={onError}
         />
       )}
     </div>
