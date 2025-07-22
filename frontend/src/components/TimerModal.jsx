@@ -250,10 +250,10 @@ function TimerModal({
   if (!program) return null;
 
   const channel = channels && (
-  channels[program.channelId] || 
-  channels[String(program.channelId)] || 
-  channels[Number(program.channelId)]
-) || null;
+    channels[program.channelId] || 
+    channels[String(program.channelId)] || 
+    channels[Number(program.channelId)]
+  ) || null;
   const isChannelAvailable = channel && (!channel.note || !channel.note.includes('Nicht in DVB Viewer verfügbar'));
 
   return (
