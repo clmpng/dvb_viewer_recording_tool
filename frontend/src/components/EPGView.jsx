@@ -194,6 +194,16 @@ function EPGView({ channels, onError }) {
    * Handle timer creation request
    */
   const handleCreateTimer = (program) => {
+  console.log('🔍 Debug Timer Creation:');
+  console.log('Program:', program);
+  console.log('Program channelId type:', typeof program.channelId);
+  console.log('Program channelId value:', program.channelId);
+  console.log('Available channel IDs:', Object.keys(availableChannels));
+  console.log('Channel 37 exists as string?', '37' in availableChannels);
+  console.log('Channel 37 exists as number?', 37 in availableChannels);
+  console.log('Actual channel lookup result:', availableChannels[program.channelId]);
+  console.log('String lookup result:', availableChannels[String(program.channelId)]);
+
     setTimerProgram(program);
     setShowTimerModal(true);
   };
