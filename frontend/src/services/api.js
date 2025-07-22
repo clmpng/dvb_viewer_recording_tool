@@ -241,6 +241,30 @@ export const apiService = {
     } catch (error) {
       throw new Error(`Failed to get cache stats: ${error.message}`);
     }
+  },
+
+    // System status
+  async getSystemStatus() {
+    try {
+      const response = await api.get('/status');
+      return response.data;
+    } catch (error) {
+      // Fallback: if status endpoint doesn't exist, try timer test
+      try {
+        const timerTest = await api.get('/timer/test');
+        return {
+          success: true,
+          data: {
+            backend: true,
+            dvbViewerAvailable: timerTest.data.success || false,
+            schedulerRunning: false, // Unknown without status endpoint
+            timestamp: new Date().toISOString()
+          }
+        };
+      } catch (fallbackError) {
+        throw new Error(`Failed to get system status: ${error.message}`);
+      }
+    }
   }
 };
 
