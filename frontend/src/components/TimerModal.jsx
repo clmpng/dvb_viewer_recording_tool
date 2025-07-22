@@ -78,43 +78,28 @@ function TimerModal({
   const calculateEndTime = (startTime, durationMinutes) => {
     if (!startTime) return '';
     
-    try {
-      const [hours, minutes] = startTime.split(':').map(Number);
-      const startDate = new Date(2000, 0, 1, hours, minutes);
-      const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-      
-      const endHours = endDate.getHours().toString().padStart(2, '0');
-      const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
-      
-      return `${endHours}:${endMinutes}`;
-    } catch (err) {
-      return '';
-    }
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
   };
 
   /**
-   * Handle form field changes
+   * Handle input changes
    */
   const handleInputChange = (field, value) => {
     setTimerData(prev => ({
       ...prev,
       [field]: value
     }));
-
-    // Clear validation errors for this field
+    
+    // Clear validation error for this field
     if (validation[field]) {
       setValidation(prev => ({
         ...prev,
         [field]: null
-      }));
-    }
-
-    // Auto-calculate end time if start time changes
-    if (field === 'startTime' && value) {
-      const endTime = calculateEndTime(value, 120); // Default 2h
-      setTimerData(prev => ({
-        ...prev,
-        endTime: prev.endTime || endTime
       }));
     }
   };
@@ -141,8 +126,8 @@ function TimerModal({
       errors.endTime = 'Endzeit ist erforderlich';
     }
 
-    // Validate time format
-    const timeRegex = /^\d{2}:\d{2}$/;
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (timerData.startTime && !timeRegex.test(timerData.startTime)) {
       errors.startTime = 'Ungültiges Zeitformat (HH:MM)';
     }
@@ -247,14 +232,52 @@ function TimerModal({
     }
   };
 
+  // Early return if no program
   if (!program) return null;
 
+  // Sicherer Zugriff auf channels mit besserer Fehlerbehandlung
   const channel = channels && (
     channels[program.channelId] || 
     channels[String(program.channelId)] || 
     channels[Number(program.channelId)]
   ) || null;
+    
   const isChannelAvailable = channel && (!channel.note || !channel.note.includes('Nicht in DVB Viewer verfügbar'));
+
+  // Wenn kein Channel gefunden wurde, zeige Fehlermeldung
+  if (!channel) {
+    return (
+      <div className="modal-overlay" onClick={handleOverlayClick}>
+        <div className="modal-content">
+          <div className="card-header">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Fehler</h2>
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="alert alert-error">
+              <AlertCircle size={20} />
+              <div>
+                <h4 className="font-semibold">Channel nicht gefunden</h4>
+                <p className="text-sm mt-1">
+                  Der Channel für diese Sendung konnte nicht gefunden werden. 
+                  Möglicherweise ist er nicht mehr verfügbar.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="card-footer">
+            <button onClick={onClose} className="btn btn-primary">
+              Schließen
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
@@ -279,7 +302,7 @@ function TimerModal({
                 <div className="flex items-center gap-2 mt-2">
                   <Tv size={14} className="text-blue-600" />
                   <span className="text-sm text-gray-600">
-                    {channel?.displayName || channel?.name || `Channel ${program.channelId}`}
+                    {channel.displayName || channel.name || `Channel ${program.channelId}`}
                   </span>
                   {!isChannelAvailable && (
                     <span className="badge badge-yellow text-xs">
@@ -399,7 +422,10 @@ function TimerModal({
                 </div>
 
                 <div>
-                  <label className="form-label">Endzeit *</label>
+                  <label className="form-label">
+                    <Clock size={16} className="inline mr-2" />
+                    Endzeit *
+                  </label>
                   <input
                     type="text"
                     className={`form-input ${validation.endTime ? 'border-red-300' : ''}`}
@@ -413,99 +439,86 @@ function TimerModal({
                   )}
                 </div>
               </div>
-
-              {/* Series */}
-              <div>
-                <label className="form-label">
-                  Serie (optional)
-                  <span className="text-xs text-gray-500 ml-2">Für bessere Organisation</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={timerData.series}
-                  onChange={(e) => handleInputChange('series', e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="z.B. Tatort, Dokumentation..."
-                />
-              </div>
-            </div>
-
-            {/* Advanced Settings Toggle */}
-            <div className="border-t pt-6">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-                disabled={isSubmitting}
-              >
-                <Settings size={18} />
-                Erweiterte Einstellungen
-                <svg 
-                  className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
             </div>
 
             {/* Advanced Settings */}
-            {showAdvanced && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Zap size={18} />
-                  Erweiterte Optionen
-                </h3>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                <Settings size={18} />
+                <span className="font-medium">Erweiterte Einstellungen</span>
+                <ChevronDown 
+                  size={18} 
+                  className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Pre-buffer */}
-                  <div>
-                    <label className="form-label">
-                      Vorlauf (Min)
-                      <span className="text-xs text-gray-500 block">Früher starten</span>
-                    </label>
-                    <input
-                      type="number"
-                      className={`form-input ${validation.epgBefore ? 'border-red-300' : ''}`}
-                      value={timerData.epgBefore}
-                      onChange={(e) => handleInputChange('epgBefore', e.target.value)}
-                      disabled={isSubmitting}
-                      min="0"
-                      max="60"
-                    />
-                    {validation.epgBefore && (
-                      <p className="text-red-600 text-xs mt-1">{validation.epgBefore}</p>
-                    )}
+              {showAdvanced && (
+                <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                  {/* EPG Buffer */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">
+                        Vorlauf (Minuten)
+                      </label>
+                      <input
+                        type="number"
+                        className={`form-input ${validation.epgBefore ? 'border-red-300' : ''}`}
+                        value={timerData.epgBefore}
+                        onChange={(e) => handleInputChange('epgBefore', e.target.value)}
+                        disabled={isSubmitting}
+                        min="0"
+                        max="60"
+                      />
+                      {validation.epgBefore && (
+                        <p className="text-red-600 text-sm mt-1">{validation.epgBefore}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Nachlauf (Minuten)
+                      </label>
+                      <input
+                        type="number"
+                        className={`form-input ${validation.epgAfter ? 'border-red-300' : ''}`}
+                        value={timerData.epgAfter}
+                        onChange={(e) => handleInputChange('epgAfter', e.target.value)}
+                        disabled={isSubmitting}
+                        min="0"
+                        max="60"
+                      />
+                      {validation.epgAfter && (
+                        <p className="text-red-600 text-sm mt-1">{validation.epgAfter}</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Post-buffer */}
+                  {/* Folder */}
                   <div>
                     <label className="form-label">
-                      Nachlauf (Min)
-                      <span className="text-xs text-gray-500 block">Länger aufnehmen</span>
+                      Aufnahmeordner
                     </label>
                     <input
-                      type="number"
-                      className={`form-input ${validation.epgAfter ? 'border-red-300' : ''}`}
-                      value={timerData.epgAfter}
-                      onChange={(e) => handleInputChange('epgAfter', e.target.value)}
+                      type="text"
+                      className="form-input"
+                      value={timerData.folder}
+                      onChange={(e) => handleInputChange('folder', e.target.value)}
                       disabled={isSubmitting}
-                      min="0"
-                      max="60"
+                      placeholder="Auto"
                     />
-                    {validation.epgAfter && (
-                      <p className="text-red-600 text-xs mt-1">{validation.epgAfter}</p>
-                    )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Leer lassen für automatische Zuordnung
+                    </p>
                   </div>
 
                   {/* Priority */}
                   <div>
                     <label className="form-label">
-                      Priorität
-                      <span className="text-xs text-gray-500 block">0-100</span>
+                      Priorität (0-100)
                     </label>
                     <input
                       type="number"
@@ -517,71 +530,76 @@ function TimerModal({
                       max="100"
                     />
                     {validation.priority && (
-                      <p className="text-red-600 text-xs mt-1">{validation.priority}</p>
+                      <p className="text-red-600 text-sm mt-1">{validation.priority}</p>
                     )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Höhere Werte = höhere Priorität bei Konflikten
+                    </p>
                   </div>
 
-                  {/* Folder */}
+                  {/* Series */}
                   <div>
                     <label className="form-label">
-                      Ordner
-                      <span className="text-xs text-gray-500 block">Zielordner</span>
+                      Serienname
                     </label>
                     <input
                       type="text"
                       className="form-input"
-                      value={timerData.folder}
-                      onChange={(e) => handleInputChange('folder', e.target.value)}
+                      value={timerData.series}
+                      onChange={(e) => handleInputChange('series', e.target.value)}
                       disabled={isSubmitting}
-                      placeholder="Auto"
+                      placeholder="Optional"
                     />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Für Serienepisoden
+                    </p>
                   </div>
-                </div>
 
-                {/* Quick presets */}
-                <div>
-                  <label className="form-label mb-2">Schnelleinstellungen</label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleInputChange('epgBefore', 2);
-                        handleInputChange('epgAfter', 5);
-                        handleInputChange('priority', 30);
-                      }}
-                      className="btn btn-outline btn-sm"
-                      disabled={isSubmitting}
-                    >
-                      Niedrig
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleInputChange('epgBefore', 5);
-                        handleInputChange('epgAfter', 10);
-                        handleInputChange('priority', 50);
-                      }}
-                      className="btn btn-outline btn-sm"
-                      disabled={isSubmitting}
-                    >
-                      Standard
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleInputChange('epgBefore', 10);
-                        handleInputChange('epgAfter', 20);
-                        handleInputChange('priority', 80);
-                      }}
-                      className="btn btn-outline btn-sm"
-                      disabled={isSubmitting}
-                    >
-                      Wichtig
-                    </button>
+                  {/* Quick Presets */}
+                  <div>
+                    <label className="form-label mb-2">Schnelleinstellungen</label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('epgBefore', 2);
+                          handleInputChange('epgAfter', 5);
+                          handleInputChange('priority', 30);
+                        }}
+                        className="btn btn-outline btn-sm"
+                        disabled={isSubmitting}
+                      >
+                        Niedrig
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('epgBefore', 5);
+                          handleInputChange('epgAfter', 10);
+                          handleInputChange('priority', 50);
+                        }}
+                        className="btn btn-outline btn-sm"
+                        disabled={isSubmitting}
+                      >
+                        Standard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleInputChange('epgBefore', 10);
+                          handleInputChange('epgAfter', 20);
+                          handleInputChange('priority', 80);
+                        }}
+                        className="btn btn-outline btn-sm"
+                        disabled={isSubmitting}
+                      >
+                        Wichtig
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </form>
         </div>
 
