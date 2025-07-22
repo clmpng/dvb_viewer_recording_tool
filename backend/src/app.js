@@ -51,6 +51,50 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+app.get('/api/status', async (req, res) => {
+  try {
+    const { getConfig } = require('./utils/fileManager');
+    const timerService = require('./services/timerService');
+    const { scheduler } = require('./utils/scheduler');
+
+    // Get configuration
+    const config = await getConfig();
+    const dvbHost = process.env.DVB_VIEWER_HOST || config.dvbViewer.host;
+
+    // Test DVB Viewer connection
+    let dvbViewerStatus = false;
+    try {
+      const dvbTest = await timerService.testConnection();
+      dvbViewerStatus = dvbTest.success;
+    } catch (error) {
+      console.warn('DVB Viewer test failed:', error.message);
+    }
+
+    // Get scheduler status
+    const schedulerStatus = scheduler.getJobCount() > 0;
+
+    res.json({
+      success: true,
+      data: {
+        backend: true,
+        dvbViewerAvailable: dvbViewerStatus,
+        schedulerRunning: schedulerStatus,
+        dvbHost: dvbHost,
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+      }
+    });
+
+  } catch (error) {
+    console.error('Status check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get system status',
+      message: error.message
+    });
+  }
+});
+
 // Initialize
 async function startServer() {
   try {
